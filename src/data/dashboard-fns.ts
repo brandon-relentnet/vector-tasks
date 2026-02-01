@@ -49,8 +49,13 @@ export const getDashboardData = async () => {
       .sort((a, b) => {
         const priorityMap: any = { 'High': 3, 'Med': 2, 'Low': 1 };
         return priorityMap[b.priority] - priorityMap[a.priority];
-      })
-      .slice(0, 5);
+      });
+
+    // Recent Completed Quests (Done today)
+    const today = new Date().toISOString().split('T')[0];
+    const history = tasks
+      .filter(t => t.status === 'Done' && t.updated_at.startsWith(today))
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
     // Projects with active counts
     const projectsWithCounts = projects.map(p => ({
@@ -60,7 +65,8 @@ export const getDashboardData = async () => {
 
     return {
       xp,
-      quests,
+      quests: quests.slice(0, 5),
+      history,
       projects: projectsWithCounts
     };
   } catch (error) {

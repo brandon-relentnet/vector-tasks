@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, Circle } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/')({
       return data
     } catch (error) {
       console.error('Loader error:', error)
-      return { xp: 0, quests: [], projects: [] }
+      return { xp: 0, quests: [], history: [], projects: [] }
     }
   },
   component: Dashboard,
@@ -23,15 +23,10 @@ function Dashboard() {
   const data = Route.useLoaderData()
   const router = useRouter()
 
-  const handleStatusChange = async (taskId: number, currentStatus: string) => {
-    let nextStatus = 'Todo'
-    if (currentStatus === 'Todo') nextStatus = 'Working'
-    else if (currentStatus === 'Working') nextStatus = 'Done'
-    else if (currentStatus === 'Done') nextStatus = 'Todo'
-
+  const handleStatusUpdate = async (taskId: number, newStatus: string) => {
     try {
-      await updateTaskStatus(taskId, nextStatus)
-      router.invalidate() // Refresh the loader data
+      await updateTaskStatus(taskId, newStatus)
+      router.invalidate()
     } catch (error) {
       console.error('Failed to update status:', error)
     }
@@ -63,10 +58,11 @@ function Dashboard() {
         ))}
       </div>
 
+      {/* Active Quests Section */}
       <Card className="border-2 shadow-lg text-zinc-900 dark:text-zinc-50">
         <CardHeader>
           <CardTitle>Active Quests</CardTitle>
-          <CardDescription>Top priority missions currently in the field.</CardDescription>
+          <CardDescription>Missions currently in the field.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -75,8 +71,8 @@ function Dashboard() {
                 <TableHead className="w-[400px]">Objective</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-                <TableHead className="text-right">ADHD Friction</TableHead>
+                <TableHead>Quick Actions</TableHead>
+                <TableHead className="text-right">Friction</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -90,21 +86,28 @@ function Dashboard() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full ${quest.status === 'Working' ? 'bg-blue-500 animate-pulse' : quest.status === 'Done' ? 'bg-green-500' : 'bg-slate-400'}`} />
+                      <span className={`h-2 w-2 rounded-full ${quest.status === 'Working' ? 'bg-blue-500 animate-pulse' : 'bg-slate-400'}`} />
                       {quest.status}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="gap-2"
-                      onClick={() => handleStatusChange(quest.id, quest.status)}
-                    >
-                      {quest.status === 'Todo' && <><Play className="h-4 w-4" /> Start</>}
-                      {quest.status === 'Working' && <><CheckCircle2 className="h-4 w-4" /> Complete</>}
-                      {quest.status === 'Done' && <><Circle className="h-4 w-4" /> Reset</>}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {quest.status === 'Todo' && (
+                        <Button variant="outline" size="sm" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200" onClick={() => handleStatusUpdate(quest.id, 'Working')}>
+                          <Play className="h-4 w-4 mr-1" /> Start
+                        </Button>
+                      )}
+                      {quest.status === 'Working' && (
+                        <>
+                          <Button variant="outline" size="sm" className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200" onClick={() => handleStatusUpdate(quest.id, 'Done')}>
+                            <CheckCircle2 className="h-4 w-4 mr-1" /> Complete
+                          </Button>
+                          <Button variant="ghost" size="sm" title="Pause" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
+                            <Pause className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-mono text-muted-foreground">
                     {quest.nudge_count > 0 ? `${quest.nudge_count} nudges` : '--'}
@@ -115,6 +118,37 @@ function Dashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* History / Recently Completed Section */}
+      {data.history && data.history.length > 0 && (
+        <Card className="border-2 opacity-80 shadow-md bg-zinc-50/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <History className="h-5 w-5 text-muted-foreground" />
+                Mission History
+              </CardTitle>
+              <CardDescription>Recently completed objectives.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableBody>
+                {data.history.map((quest: any) => (
+                  <TableRow key={quest.id} className="hover:bg-transparent">
+                    <TableCell className="line-through text-muted-foreground italic">{quest.title}</TableCell>
+                    <TableCell className="w-[100px]">
+                       <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Restore to Todo" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
+                        <RotateCcw className="h-4 w-4 mr-1" /> Undo
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
