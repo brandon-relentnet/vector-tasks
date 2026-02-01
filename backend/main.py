@@ -1,12 +1,11 @@
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime, Date, JSON
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship
+from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
 
 # Database Connection
 DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
@@ -22,7 +21,9 @@ class Project(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(Text)
     category = Column(String)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    
+    tasks = relationship("Task", back_populates="project")
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -33,17 +34,20 @@ class Task(Base):
     priority = Column(String, default="Med")
     status = Column(String, default="Todo")
     subtasks = Column(JSON, default=[])
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    nudge_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+
+    project = relationship("Project", back_populates="tasks")
 
 class DailyLog(Base):
     __tablename__ = "daily_logs"
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, unique=True, default=datetime.utcnow().date())
+    date = Column(Date, unique=True, default=lambda: datetime.now(UTC).date())
     big_win = Column(Text)
     starting_nudge = Column(Text)
     reflections = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 # Schemas
 class TaskBase(BaseModel):
@@ -53,6 +57,7 @@ class TaskBase(BaseModel):
     status: str = "Todo"
     project_id: Optional[int] = None
     subtasks: List[dict] = []
+    nudge_count: int = 0
 
 class TaskCreate(TaskBase):
     pass
@@ -62,22 +67,32 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     priority: Optional[str] = None
     status: Optional[str] = None
+    project_id: Optional[int] = None
     subtasks: Optional[List[dict]] = None
+    nudge_count: Optional[int] = None
 
 class TaskOut(TaskBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    class Config:
-        from_attributes = True
+    project_name: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_orm(cls, obj):
+        # Overriding to inject project_name from relationship
+        instance = super().from_orm(obj)
+        if obj.project:
+            instance.project_name = obj.project.name
+        return instance
 
 class ProjectOut(BaseModel):
     id: int
     name: str
     description: Optional[str]
     category: Optional[str]
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # App
 app = FastAPI(title="Vector Tasks API")
@@ -109,14 +124,17 @@ def get_tasks(project_id: Optional[int] = None, status: Optional[str] = None, db
         query = query.filter(Task.project_id == project_id)
     if status:
         query = query.filter(Task.status == status)
-    return query.order_by(Task.created_at.desc()).all()
+    
+    tasks = query.order_by(Task.created_at.desc()).all()
+    # Explicitly call from_orm for each to trigger the project_name injection
+    return [TaskOut.from_orm(t) for t in tasks]
 
 @app.get("/tasks/{task_id}", response_model=TaskOut)
 def get_task(task_id: int, db: Session = Depends(get_db)):
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return db_task
+    return TaskOut.from_orm(db_task)
 
 @app.post("/tasks", response_model=TaskOut)
 def create_task(task: TaskCreate, db: Session = Depends(get_db)):
@@ -124,7 +142,7 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
-    return db_task
+    return TaskOut.from_orm(db_task)
 
 @app.patch("/tasks/{task_id}", response_model=TaskOut)
 def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
@@ -138,7 +156,7 @@ def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get
     
     db.commit()
     db.refresh(db_task)
-    return db_task
+    return TaskOut.from_orm(db_task)
 
 @app.delete("/tasks/{task_id}")
 def delete_task(task_id: int, db: Session = Depends(get_db)):
