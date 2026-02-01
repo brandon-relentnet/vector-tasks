@@ -68,3 +68,13 @@ export const getDashboardData = async () => {
     return { xp: 0, quests: [], projects: [] };
   }
 };
+
+export const updateTaskStatus = async (taskId: number, status: string) => {
+  try {
+    const response = await api.patch(`/tasks/${taskId}`, { status });
+    return response.data;
+  } catch (error) {
+    console.error('Update Task Error:', error);
+    throw error;
+  }
+};
