@@ -8,7 +8,7 @@ export const api = axios.create({
 
 export interface Project {
   id: number;
-  name: str;
+  name: string;
   description: string;
   category: string;
   active_count?: number;
@@ -37,8 +37,9 @@ export const getDashboardData = async () => {
     const tasks: Task[] = tasksRes.data;
     const projects: Project[] = projectsRes.data;
 
-    // Calculate XP (tasks done today)
     const today = new Date().toISOString().split('T')[0];
+
+    // Calculate XP (tasks done today)
     const xp = tasks
       .filter(t => t.status === 'Done' && t.updated_at.startsWith(today))
       .length * 10; // Assuming 10 XP per task for now
@@ -52,7 +53,6 @@ export const getDashboardData = async () => {
       });
 
     // Recent Completed Quests (Done today)
-    const today = new Date().toISOString().split('T')[0];
     const history = tasks
       .filter(t => t.status === 'Done' && t.updated_at.startsWith(today))
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
