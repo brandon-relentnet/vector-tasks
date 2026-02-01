@@ -84,3 +84,23 @@ export const updateTaskStatus = async (taskId: number, status: string) => {
     throw error;
   }
 };
+
+export const createTask = async (task: Partial<Task>) => {
+  try {
+    const response = await api.post('/tasks', task);
+    return response.data;
+  } catch (error) {
+    console.error('Create Task Error:', error);
+    throw error;
+  }
+};
+
+export const deleteTask = async (taskId: number) => {
+  try {
+    const response = await api.delete(`/tasks/${taskId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Delete Task Error:', error);
+    throw error;
+  }
+};

@@ -109,7 +109,14 @@ def get_tasks(project_id: Optional[int] = None, status: Optional[str] = None, db
         query = query.filter(Task.project_id == project_id)
     if status:
         query = query.filter(Task.status == status)
-    return query.all()
+    return query.order_by(Task.created_at.desc()).all()
+
+@app.get("/tasks/{task_id}", response_model=TaskOut)
+def get_task(task_id: int, db: Session = Depends(get_db)):
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return db_task
 
 @app.post("/tasks", response_model=TaskOut)
 def create_task(task: TaskCreate, db: Session = Depends(get_db)):

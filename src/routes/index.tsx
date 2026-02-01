@@ -1,10 +1,11 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { getDashboardData, updateTaskStatus } from '../data/dashboard-fns'
+import { getDashboardData, updateTaskStatus, createTask, deleteTask } from '../data/dashboard-fns'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -22,6 +23,9 @@ export const Route = createFileRoute('/')({
 function Dashboard() {
   const data = Route.useLoaderData()
   const router = useRouter()
+  const [isAdding, setIsAdding] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
 
   const handleStatusUpdate = async (taskId: number, newStatus: string) => {
     try {
@@ -29,6 +33,35 @@ function Dashboard() {
       router.invalidate()
     } catch (error) {
       console.error('Failed to update status:', error)
+    }
+  }
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTaskTitle.trim()) return
+
+    try {
+      await createTask({
+        title: newTaskTitle,
+        project_id: selectedProjectId || data.projects[0]?.id,
+        status: 'Todo',
+        priority: 'Med'
+      })
+      setNewTaskTitle('')
+      setIsAdding(false)
+      router.invalidate()
+    } catch (error) {
+      console.error('Failed to create task:', error)
+    }
+  }
+
+  const handleDeleteTask = async (taskId: number) => {
+    if (!confirm('Are you sure you want to delete this quest?')) return
+    try {
+      await deleteTask(taskId)
+      router.invalidate()
+    } catch (error) {
+      console.error('Failed to delete task:', error)
     }
   }
 
@@ -47,7 +80,11 @@ function Dashboard() {
 
       <div className="grid gap-6 md:grid-cols-3">
         {data?.projects?.map((project: any) => (
-          <Card key={project.name} className="border-2 text-zinc-900 dark:text-zinc-50">
+          <Card 
+            key={project.name} 
+            className={`border-2 transition-colors cursor-pointer ${selectedProjectId === project.id ? 'border-primary bg-primary/5' : 'text-zinc-900 dark:text-zinc-50'}`}
+            onClick={() => setSelectedProjectId(selectedProjectId === project.id ? null : project.id)}
+          >
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium uppercase tracking-wider">{project.name}</CardTitle>
             </CardHeader>
@@ -60,11 +97,47 @@ function Dashboard() {
 
       {/* Active Quests Section */}
       <Card className="border-2 shadow-lg text-zinc-900 dark:text-zinc-50">
-        <CardHeader>
-          <CardTitle>Active Quests</CardTitle>
-          <CardDescription>Missions currently in the field.</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Active Quests</CardTitle>
+            <CardDescription>Missions currently in the field.</CardDescription>
+          </div>
+          <Button onClick={() => setIsAdding(true)} disabled={isAdding}>
+            <Plus className="h-4 w-4 mr-2" /> New Quest
+          </Button>
         </CardHeader>
         <CardContent>
+          {isAdding && (
+            <form onSubmit={handleCreateTask} className="mb-6 p-4 border-2 border-dashed rounded-lg flex gap-4 items-end bg-muted/30">
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Quest Objective</label>
+                <input 
+                  autoFocus
+                  className="w-full bg-background border-2 rounded px-3 py-2 focus:border-primary outline-none"
+                  placeholder="What needs doing?"
+                  value={newTaskTitle}
+                  onChange={e => setNewTaskTitle(e.target.value)}
+                />
+              </div>
+              <div className="w-48 space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Project</label>
+                <select 
+                  className="w-full bg-background border-2 rounded px-3 py-2 outline-none"
+                  value={selectedProjectId || ''}
+                  onChange={e => setSelectedProjectId(Number(e.target.value))}
+                >
+                  {data.projects.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm">Add</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(false)}><X className="h-4 w-4" /></Button>
+              </div>
+            </form>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -72,7 +145,7 @@ function Dashboard() {
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Quick Actions</TableHead>
-                <TableHead className="text-right">Friction</TableHead>
+                <TableHead className="text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,8 +182,10 @@ function Dashboard() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">
-                    {quest.nudge_count > 0 ? `${quest.nudge_count} nudges` : '--'}
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTask(quest.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -137,10 +212,15 @@ function Dashboard() {
                 {data.history.map((quest: any) => (
                   <TableRow key={quest.id} className="hover:bg-transparent">
                     <TableCell className="line-through text-muted-foreground italic">{quest.title}</TableCell>
-                    <TableCell className="w-[100px]">
-                       <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Restore to Todo" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
-                        <RotateCcw className="h-4 w-4 mr-1" /> Undo
-                      </Button>
+                    <TableCell className="text-right w-[150px]">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" title="Restore to Todo" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
+                          <RotateCcw className="h-4 w-4 mr-1" /> Undo
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTask(quest.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
