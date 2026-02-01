@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime, Date, JSON
 from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
+import socketio
 
 # Database Connection
 DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
@@ -94,6 +95,10 @@ class ProjectOut(BaseModel):
     category: Optional[str]
     model_config = ConfigDict(from_attributes=True)
 
+# Socket.IO setup
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+sio_app = socketio.ASGIApp(sio)
+
 # App
 app = FastAPI(title="Vector Tasks API")
 
@@ -104,6 +109,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount Socket.IO to FastAPI
+app.mount("/ws", sio_app)
+
+@sio.event
+async def connect(sid, environ):
+    print(f"Client connected: {sid}")
+
+@sio.event
+async def disconnect(sid):
+    print(f"Client disconnected: {sid}")
+
+# Helper to notify dashboard of changes
+async def notify_dashboard():
+    await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
 
 # Dependency
 def get_db():
@@ -126,7 +146,6 @@ def get_tasks(project_id: Optional[int] = None, status: Optional[str] = None, db
         query = query.filter(Task.status == status)
     
     tasks = query.order_by(Task.created_at.desc()).all()
-    # Explicitly call from_orm for each to trigger the project_name injection
     return [TaskOut.from_orm(t) for t in tasks]
 
 @app.get("/tasks/{task_id}", response_model=TaskOut)
@@ -137,15 +156,16 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     return TaskOut.from_orm(db_task)
 
 @app.post("/tasks", response_model=TaskOut)
-def create_task(task: TaskCreate, db: Session = Depends(get_db)):
+async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db_task = Task(**task.model_dump())
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+    await notify_dashboard()
     return TaskOut.from_orm(db_task)
 
 @app.patch("/tasks/{task_id}", response_model=TaskOut)
-def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
+async def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -156,13 +176,15 @@ def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get
     
     db.commit()
     db.refresh(db_task)
+    await notify_dashboard()
     return TaskOut.from_orm(db_task)
 
 @app.delete("/tasks/{task_id}")
-def delete_task(task_id: int, db: Session = Depends(get_db)):
+async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
     db.delete(db_task)
     db.commit()
+    await notify_dashboard()
     return {"message": "Task deleted"}

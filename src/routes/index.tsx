@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X } from 'lucide-react'
-import { useState } from 'react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { io } from 'socket.io-client'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -26,11 +27,31 @@ function Dashboard() {
   const [isAdding, setIsAdding] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+
+  // Real-time synchronization
+  useEffect(() => {
+    const socket = io('http://localhost:8000', {
+      path: '/ws/socket.io'
+    })
+
+    socket.on('connect', () => setIsConnected(true))
+    socket.on('disconnect', () => setIsConnected(false))
+    
+    socket.on('update', () => {
+      console.log('Real-time update received')
+      router.invalidate() // Triggers the loader to fetch fresh data
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [router])
 
   const handleStatusUpdate = async (taskId: number, newStatus: string) => {
     try {
       await updateTaskStatus(taskId, newStatus)
-      router.invalidate()
+      // No need for router.invalidate() here if the server emits 'update'
     } catch (error) {
       console.error('Failed to update status:', error)
     }
@@ -49,7 +70,6 @@ function Dashboard() {
       })
       setNewTaskTitle('')
       setIsAdding(false)
-      router.invalidate()
     } catch (error) {
       console.error('Failed to create task:', error)
     }
@@ -59,7 +79,6 @@ function Dashboard() {
     if (!confirm('Are you sure you want to delete this quest?')) return
     try {
       await deleteTask(taskId)
-      router.invalidate()
     } catch (error) {
       console.error('Failed to delete task:', error)
     }
@@ -69,7 +88,13 @@ function Dashboard() {
     <div className="p-8 space-y-8 max-w-6xl mx-auto">
       <header className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight">Vector Command Center</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-bold tracking-tight">Vector Command Center</h1>
+            {isConnected ? 
+              <Wifi className="h-5 w-5 text-green-500" title="Live Sync Active" /> : 
+              <WifiOff className="h-5 w-5 text-red-400" title="Live Sync Offline" />
+            }
+          </div>
           <p className="text-muted-foreground">Doni's Strategic Operations Dashboard</p>
         </div>
         <div className="text-right">
@@ -97,14 +122,16 @@ function Dashboard() {
 
       {/* Active Quests Section */}
       <Card className="border-2 shadow-lg text-zinc-900 dark:text-zinc-50">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Active Quests</CardTitle>
-            <CardDescription>Missions currently in the field.</CardDescription>
+        <CardHeader>
+          <div className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Active Quests</CardTitle>
+              <CardDescription>Missions currently in the field.</CardDescription>
+            </div>
+            <Button onClick={() => setIsAdding(true)} disabled={isAdding}>
+              <Plus className="h-4 w-4 mr-2" /> New Quest
+            </Button>
           </div>
-          <Button onClick={() => setIsAdding(true)} disabled={isAdding}>
-            <Plus className="h-4 w-4 mr-2" /> New Quest
-          </Button>
         </CardHeader>
         <CardContent>
           {isAdding && (
