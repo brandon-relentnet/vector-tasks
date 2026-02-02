@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Check } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Check, ChevronRight, ChevronLeft, Trophy, PartyPopper } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -32,6 +32,9 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false)
   const [timerSetupValue, setTimerSetupValue] = useState(25)
   const [localTimerEnd, setLocalTimerEnd] = useState<string | null>(null)
+  
+  // Local state to track which goal we are currently looking at in the carousel
+  const [goalIndex, setGoalIndex] = useState(0)
 
   useEffect(() => {
     const socket = io('http://localhost:8000')
@@ -59,20 +62,24 @@ function Dashboard() {
     }
   }
 
-  const markBigWinSuccess = async () => {
+  // Determine all 3 potential goals (Big Win + Goals for Tomorrow)
+  const allGoals = [
+    data.dailyLog?.big_win,
+    ...(data.dailyLog?.goals_for_tomorrow || [])
+  ].filter(Boolean);
+
+  const completedGoals = data.dailyLog?.reflections?.split('|').filter(Boolean) || [];
+  const isGoalCompleted = (goal: string) => completedGoals.includes(goal);
+
+  const markGoalSuccess = async (goal: string) => {
     if (!data.dailyLog) return;
     
-    // Simple logic: If we have goals for tomorrow, shift the next one up
-    // In a real day, this would likely be marked Done and moved to history
     try {
-      const nextGoals = [...(data.dailyLog.goals_for_tomorrow || [])];
-      const completed = nextGoals.shift();
-      
+      const newCompleted = [...completedGoals, goal].join('|');
       await axios.post('http://localhost:8000/daily-log/update', {
         id: data.dailyLog.id,
         date: data.dailyLog.date,
-        big_win: completed || "OBJECTIVES SECURED",
-        goals_for_tomorrow: nextGoals
+        reflections: newCompleted // Overloading reflections column temporarily to track completions
       })
     } catch (e) { console.error(e) }
   }
@@ -115,6 +122,8 @@ function Dashboard() {
     : data.quests;
 
   const isTimerActive = !!(localTimerEnd || data.dailyLog?.timer_end);
+  const totalCompleted = allGoals.filter(g => isGoalCompleted(g)).length;
+  const allDone = totalCompleted >= 3 && allGoals.length > 0;
 
   return (
     <div className="h-[calc(100vh-65px)] flex flex-col overflow-hidden text-foreground">
@@ -145,58 +154,55 @@ function Dashboard() {
             )}
           </div>
 
-          {/* Core Objectives Section */}
-          <div className="p-8 flex flex-col justify-center bg-black/20 group/win relative">
-            <div className="space-y-4">
-               <div className="relative">
-                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5 flex items-center gap-2">
-                    <Target size={10} className="text-primary" /> Primary Objective
-                  </span>
-                  <div className="text-sm font-black text-primary italic uppercase leading-tight tracking-tight pr-8">
-                    {data.dailyLog?.big_win || "AWAITING MISSION"}
-                  </div>
-                  {data.dailyLog?.big_win && (
-                    <button 
-                        onClick={markBigWinSuccess}
-                        className="absolute -right-2 top-4 h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary opacity-0 group-hover/win:opacity-100 transition-all hover:bg-primary hover:text-black shadow-lg"
-                    >
-                        <Check size={16} strokeWidth={3} />
-                    </button>
-                  )}
-               </div>
-               
-               {data.dailyLog && (
-                 <div className="pt-2 border-t border-zinc-800">
-                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-2 block">Mission Progression</span>
-                    <div className="flex gap-1.5">
-                      {[1, 2, 3].map((step) => {
-                          // Simple progress visualization based on remaining goals vs total (max 3)
-                          const totalGoals = 3;
-                          const currentGoalsCount = data.dailyLog?.goals_for_tomorrow?.length || 0;
-                          const completedCount = totalGoals - currentGoalsCount;
-                          const active = step <= completedCount;
-                          return (
-                            <div 
-                                key={step} 
-                                className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${active ? 'bg-primary shadow-[0_0_8px_var(--primary)]' : 'bg-zinc-800'}`} 
-                            />
-                          )
-                      })}
-                    </div>
+          {/* Goal Carousel Section */}
+          <div className="p-8 flex flex-col justify-center bg-black/20 group/win relative overflow-hidden">
+            {allDone ? (
+              <div className="flex flex-col items-center justify-center text-center space-y-2 animate-in zoom-in-95 duration-500">
+                 <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center border border-primary/30 shadow-[0_0_15px_rgba(255,190,0,0.3)]">
+                   <Trophy size={20} className="text-primary" />
                  </div>
-               )}
-
-               {data.dailyLog?.starting_nudge && activeBriefing?.type === 'morning' && (
-                 <div className="pt-2 border-t border-zinc-800">
-                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5 flex items-center gap-2">
-                      <Zap size={10} className="text-amber-400" /> Starting Nudge
+                 <h3 className="text-primary font-black uppercase italic tracking-tighter text-base">All Objectives Secured</h3>
+                 <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none">Operational peak achieved today.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 flex items-center gap-2">
+                        <Target size={10} className="text-primary" /> 
+                        Objective {goalIndex + 1}/{allGoals.length}
                     </span>
-                    <div className="text-[10px] font-bold text-zinc-300 uppercase leading-tight">
-                      {data.dailyLog.starting_nudge}
+                    <div className="flex gap-1">
+                        <button onClick={() => setGoalIndex(prev => Math.max(0, prev - 1))} className="text-zinc-600 hover:text-white transition-colors disabled:opacity-10" disabled={goalIndex === 0}><ChevronLeft size={14}/></button>
+                        <button onClick={() => setGoalIndex(prev => Math.min(allGoals.length - 1, prev + 1))} className="text-zinc-600 hover:text-white transition-colors disabled:opacity-10" disabled={goalIndex === allGoals.length - 1}><ChevronRight size={14}/></button>
                     </div>
-                 </div>
-               )}
-            </div>
+                </div>
+
+                <div className="relative min-h-[40px] flex items-center pr-10 group/item">
+                    <div className={`text-sm font-black italic uppercase leading-tight tracking-tight transition-all duration-300 ${isGoalCompleted(allGoals[goalIndex]) ? 'text-zinc-600 line-through opacity-50' : 'text-primary'}`}>
+                        {allGoals[goalIndex] || "AWAITING MISSION"}
+                    </div>
+                    {!isGoalCompleted(allGoals[goalIndex]) && allGoals[goalIndex] && (
+                        <button 
+                            onClick={() => markGoalSuccess(allGoals[goalIndex])}
+                            className="absolute right-0 h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary opacity-0 group-hover/item:opacity-100 transition-all hover:bg-primary hover:text-black shadow-lg"
+                        >
+                            <Check size={16} strokeWidth={3} />
+                        </button>
+                    )}
+                </div>
+
+                <div className="pt-2 border-t border-zinc-800">
+                    <div className="flex gap-1.5">
+                      {allGoals.map((g, i) => (
+                        <div 
+                            key={i} 
+                            className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${isGoalCompleted(g) ? 'bg-primary shadow-[0_0_8px_var(--primary)]' : 'bg-zinc-800'}`} 
+                        />
+                      ))}
+                    </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -241,7 +247,7 @@ function Dashboard() {
                 <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Deploy Timer</span>
                 <Clock size={12} className="text-zinc-500" />
               </div>
-              <div className="flex items-center justify-between bg-zinc-800 rounded-xl p-1.5 border border-zinc-700">
+              <div className="flex items-center justify-between bg-zinc-800 rounded-xl p-1.5 border border-zinc-700/50">
                 <button onClick={() => setTimerSetupValue(v => Math.max(1, v - 5))} className="text-zinc-500 hover:text-primary transition-colors p-1"><Minus size={14} /></button>
                 <span className="text-xl font-black font-mono text-white">{timerSetupValue}</span>
                 <button onClick={() => setTimerSetupValue(v => v + 5)} className="text-zinc-500 hover:text-primary transition-colors p-1"><Plus size={14} /></button>
@@ -293,7 +299,7 @@ function Dashboard() {
             <Card className="border-2 border-border shadow-xl rounded-3xl overflow-hidden bg-card">
               <CardContent className="p-0">
                 {isAdding && (
-                  <form onSubmit={handleCreateTask} className="p-10 border-b-2 border-dashed border-border bg-muted/30 flex gap-6 items-end animate-in fade-in slide-in-from-top-6 duration-500">
+                  <form onSubmit={handleCreateTask} className="p-10 border-b-2 border-dashed border-border bg-muted/30 flex gap-6 items-end animate-in fade-in slide-in-from-top-6 duration-500 text-foreground">
                     <div className="flex-1 space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Operational Objective</label>
                       <input autoFocus className="w-full bg-card border-2 border-border rounded-2xl px-6 py-4 text-lg font-black focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all" placeholder="Enter mission parameters..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
@@ -341,7 +347,7 @@ function Dashboard() {
                             )}
                             {quest.status === 'Working' && (
                               <>
-                                <Button variant="outline" size="sm" className="h-10 bg-primary hover:bg-foreground hover:text-background text-zinc-900 border-2 border-primary font-black text-[10px] tracking-[0.1em] px-5 rounded-xl transition-all" onClick={() => handleStatusUpdate(quest.id, 'Done')}>
+                                <Button variant="outline" size="sm" className="h-10 bg-primary hover:bg-zinc-900 hover:text-primary text-zinc-900 border-2 border-primary font-black text-[10px] tracking-[0.1em] px-5 rounded-xl transition-all" onClick={() => handleStatusUpdate(quest.id, 'Done')}>
                                   FINISH
                                 </Button>
                                 <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
@@ -379,7 +385,7 @@ function Dashboard() {
                   {data.history.map((quest: any) => (
                     <div key={quest.id} className="bg-card border-2 border-border p-5 rounded-2xl flex items-center justify-between group shadow-sm hover:shadow-md transition-all">
                       <span className="line-through text-muted-foreground italic font-black text-base tracking-tighter uppercase">{quest.title}</span>
-                      <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                      <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0 text-foreground">
                         <Button variant="outline" size="sm" className="h-8 text-[9px] font-black tracking-widest border-2 border-zinc-200 hover:border-zinc-900 rounded-lg px-4" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>RESTORE</Button>
                         <Button variant="ghost" size="sm" className="h-8 w-8 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg" onClick={() => handleDeleteTask(quest.id)}><Trash2 size={16} /></Button>
                       </div>
