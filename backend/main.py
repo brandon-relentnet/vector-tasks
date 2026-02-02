@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from datetime import datetime, UTC, date as py_date, timedelta
 import pytz
 from typing import List, Optional
