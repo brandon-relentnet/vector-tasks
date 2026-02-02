@@ -107,6 +107,7 @@ function Dashboard() {
   const handleStatusUpdate = async (taskId: number, newStatus: string) => {
     try {
       await updateTaskStatus(taskId, newStatus)
+      await router.invalidate() // Force refresh immediately
     } catch (error) {
       console.error(error)
     }
@@ -127,6 +128,7 @@ function Dashboard() {
       setNewTaskTitle('')
       setNewPriority('Med')
       setIsAdding(false)
+      await router.invalidate() // Force refresh immediately
     } catch (error) {
       console.error(error)
     }
@@ -137,6 +139,7 @@ function Dashboard() {
     if (!confirm('Delete quest?')) return
     try {
       await deleteTask(taskId)
+      await router.invalidate() // Force refresh immediately
     } catch (error) {
       console.error(error)
     }
