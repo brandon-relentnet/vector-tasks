@@ -328,8 +328,16 @@ function Dashboard() {
               )}
             </div>
             
-            <Button onClick={() => setIsAdding(true)} disabled={isAdding} className="font-black uppercase tracking-widest text-[10px] h-10 px-6 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-primary dark:text-black rounded-xl shadow-lg transition-all active:scale-95">
-              <Plus className="h-4 w-4 mr-2 text-primary" /> New Objective
+            <Button 
+              onClick={() => setIsAdding(true)} 
+              disabled={isAdding} 
+              className="group relative overflow-hidden font-black uppercase tracking-widest text-[10px] h-10 px-6 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-primary dark:text-black rounded-xl shadow-lg transition-all active:scale-95 border border-zinc-800 dark:border-primary/50 hover:shadow-primary/20 hover:shadow-xl"
+            >
+              <div className="absolute inset-0 bg-white/10 translate-y-10 group-hover:translate-y-0 transition-transform duration-300" />
+              <div className="flex items-center gap-2 relative z-10">
+                <Plus className="h-4 w-4 text-primary dark:text-black transition-transform group-hover:rotate-90 duration-300" strokeWidth={3} /> 
+                <span>New Objective</span>
+              </div>
             </Button>
           </div>
 
