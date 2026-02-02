@@ -175,7 +175,7 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     }
 
     cache_service.invalidate_projects()
-    notify_dashboard()
+    await notify_dashboard()
 
     return result
 
@@ -232,7 +232,7 @@ async def update_project(
     }
 
     cache_service.invalidate_projects()
-    notify_dashboard()
+    await notify_dashboard()
 
     return result
 
@@ -268,6 +268,6 @@ async def delete_project(project_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     cache_service.invalidate_projects()
-    notify_dashboard()
+    await notify_dashboard()
 
     return {"message": "Project and all sub-projects deleted"}

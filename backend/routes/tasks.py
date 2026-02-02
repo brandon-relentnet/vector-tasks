@@ -107,7 +107,7 @@ async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db.refresh(new_task)
 
     cache_service.invalidate_projects()
-    notify_dashboard()
+    await notify_dashboard()
 
     return new_task
 
@@ -147,7 +147,7 @@ async def update_task(
     db.refresh(task)
 
     cache_service.invalidate_projects()
-    notify_dashboard()
+    await notify_dashboard()
 
     return task
 
@@ -173,6 +173,6 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     cache_service.invalidate_projects()
-    notify_dashboard()
+    await notify_dashboard()
 
     return {"message": "Task deleted"}

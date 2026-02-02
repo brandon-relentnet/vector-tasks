@@ -54,16 +54,9 @@ async def disconnect(sid):
 async def notify_dashboard():
     """Broadcast update event to all connected clients"""
     try:
-        # Get connected clients count
-        manager = sio.manager
-        namespace = manager.get_default_namespace()
-        if namespace:
-            connected_count = len(namespace.connections) if hasattr(namespace, 'connections') else 'unknown'
-        else:
-            connected_count = 0
-        print(f"[Socket] Broadcasting update to {connected_count} client(s)")
+        print(f"[Socket] notify_dashboard() called")
         await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
-        print(f"[Socket] Broadcast complete")
+        print(f"[Socket] Update broadcast sent")
     except Exception as e:
         print(f"[Socket] Error broadcasting update: {e}")
 

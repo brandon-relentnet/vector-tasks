@@ -90,7 +90,7 @@ async def add_briefing(briefing: BriefingCreate, db: Session = Depends(get_db)):
     db.refresh(new_briefing)
 
     cache_service.invalidate_daily_log(today)
-    notify_dashboard()
+    await notify_dashboard()
 
     return new_briefing
 
@@ -164,7 +164,7 @@ async def update_daily_log(
     db.refresh(db_log)
 
     cache_service.invalidate_daily_log(today)
-    notify_dashboard()
+    await notify_dashboard()
 
     return db_log
 
@@ -205,7 +205,7 @@ async def mark_goal_completed(
     db.refresh(db_log)
 
     cache_service.invalidate_daily_log(today)
-    notify_dashboard()
+    await notify_dashboard()
 
     return db_log
 
@@ -250,7 +250,7 @@ async def delete_briefing(briefing_id: int, db: Session = Depends(get_db)):
                 db.commit()
 
     cache_service.invalidate_daily_log(get_local_date())
-    notify_dashboard()
+    await notify_dashboard()
 
     return {"message": "Briefing deleted"}
 
@@ -281,6 +281,6 @@ async def delete_daily_log(log_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     cache_service.invalidate_daily_log(get_local_date())
-    notify_dashboard()
+    await notify_dashboard()
 
     return {"message": "Daily log deleted"}
