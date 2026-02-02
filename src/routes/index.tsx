@@ -355,76 +355,89 @@ function Dashboard() {
             <Card className="border-2 border-border shadow-xl rounded-3xl overflow-hidden bg-card">
               <CardContent className="p-0">
                 {isAdding && (
-                  <form onSubmit={handleCreateTask} className="p-10 border-b-4 border-primary/20 bg-zinc-900/50 dark:bg-black/40 flex flex-col md:flex-row gap-8 items-end animate-in fade-in slide-in-from-top-6 duration-500 text-foreground relative overflow-hidden">
+                  <form onSubmit={handleCreateTask} className="p-8 border-b-4 border-primary/20 bg-zinc-900/50 dark:bg-black/40 flex flex-col gap-6 animate-in fade-in slide-in-from-top-6 duration-500 text-foreground relative overflow-hidden group/form">
                     <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse" />
                     
-                    <div className="flex-1 space-y-4 w-full">
-                      <div className="flex items-center justify-between">
+                    {/* Top Row: Input and Action Buttons */}
+                    <div className="flex flex-col md:flex-row gap-6 items-start md:items-end">
+                      <div className="flex-1 w-full space-y-2 relative">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                          <Target size={12} /> Mission Parameters
+                          <Target size={12} /> Operational Objective
                         </label>
-                        <span className="text-[9px] font-mono text-zinc-500">ID: {Math.floor(Math.random() * 9999)}</span>
-                      </div>
-                      
-                      <div className="relative group">
                         <input 
                           autoFocus 
-                          className="w-full bg-transparent border-b-2 border-zinc-700 focus:border-primary text-2xl font-black uppercase tracking-tight py-2 outline-none transition-all placeholder:text-zinc-700" 
-                          placeholder="ENTER OBJECTIVE..." 
+                          className="w-full bg-transparent border-b-2 border-zinc-700 focus:border-primary text-3xl font-black uppercase tracking-tighter py-2 outline-none transition-all placeholder:text-zinc-800 placeholder:opacity-50" 
+                          placeholder="ENTER MISSION PARAMETERS..." 
                           value={newTaskTitle} 
                           onChange={e => setNewTaskTitle(e.target.value)} 
                         />
-                        <div className="absolute right-0 bottom-3 text-xs font-mono text-zinc-600 opacity-0 group-focus-within:opacity-100 transition-opacity">
-                          [READY]
+                      </div>
+
+                      <div className="flex gap-2 w-full md:w-auto shrink-0">
+                        <Button 
+                          type="submit" 
+                          disabled={isSubmitting}
+                          className={`flex-1 md:flex-none h-14 min-w-[140px] font-black uppercase tracking-widest text-[10px] rounded-xl shadow-xl transition-all active:scale-95 ${isSubmitting ? 'bg-zinc-800 text-zinc-500 cursor-wait' : 'bg-primary text-black hover:shadow-primary/20 hover:shadow-2xl'}`}
+                        >
+                          {isSubmitting ? (
+                            <span className="animate-pulse">Deploying...</span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span>Initialize</span> <ChevronRight size={12} strokeWidth={4} />
+                            </div>
+                          )}
+                        </Button>
+                        <Button type="button" variant="ghost" className="h-14 w-14 rounded-xl text-zinc-600 hover:bg-rose-950/30 hover:text-rose-500 hover:border-rose-900 border border-transparent transition-all" onClick={() => setIsAdding(false)}>
+                          <X size={20} />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Controls */}
+                    <div className="flex flex-wrap items-center gap-6 pt-2">
+                      {/* Priority Toggle */}
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Threat Level</span>
+                        <div className="flex bg-zinc-950/50 p-1 rounded-lg border border-zinc-800">
+                          {['Low', 'Med', 'High'].map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setNewPriority(p)}
+                              className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
+                                newPriority === p 
+                                  ? p === 'High' ? 'bg-rose-500 text-white shadow-lg shadow-rose-900/20' 
+                                  : p === 'Med' ? 'bg-primary text-black shadow-lg shadow-primary/20' 
+                                  : 'bg-zinc-700 text-white'
+                                  : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      
-                      <div className="flex flex-wrap gap-3">
-                        <div className="relative">
+
+                      {/* Project Selector */}
+                      <div className="space-y-1.5 flex-1 min-w-[200px]">
+                        <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Assigned Sector</span>
+                        <div className="relative group/select">
                           <select 
                             value={newProjectId || ""} 
                             onChange={(e) => setNewProjectId(Number(e.target.value))}
-                            className="appearance-none bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg pl-3 pr-8 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-300 focus:border-primary focus:text-primary outline-none transition-all cursor-pointer min-w-[140px]"
+                            className="appearance-none w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg pl-4 pr-10 py-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-300 focus:border-primary focus:text-primary outline-none transition-all cursor-pointer shadow-sm"
                           >
                             {data.projects.map((p: any) => (
                               <option key={p.id} value={p.id}>{p.name}</option>
                             ))}
                           </select>
-                          <ChevronRight size={10} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 rotate-90 pointer-events-none" />
-                        </div>
-
-                        <div className="relative">
-                          <select 
-                            value={newPriority} 
-                            onChange={(e) => setNewPriority(e.target.value)}
-                            className="appearance-none bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg pl-3 pr-8 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-300 focus:border-primary focus:text-primary outline-none transition-all cursor-pointer"
-                          >
-                            <option value="Low">Low Priority</option>
-                            <option value="Med">Medium Priority</option>
-                            <option value="High">High Priority</option>
-                          </select>
-                          <ChevronRight size={10} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 rotate-90 pointer-events-none" />
+                          <ChevronRight size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 group-hover/select:text-primary transition-colors rotate-90 pointer-events-none" />
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex gap-3 w-full md:w-auto">
-                      <Button 
-                        type="submit" 
-                        disabled={isSubmitting}
-                        className={`flex-1 md:flex-none h-14 min-w-[140px] font-black uppercase tracking-widest text-[10px] rounded-xl shadow-xl transition-all active:scale-95 ${isSubmitting ? 'bg-zinc-800 text-zinc-500 cursor-wait' : 'bg-primary text-black hover:shadow-primary/20 hover:shadow-2xl'}`}
-                      >
-                        {isSubmitting ? (
-                          <span className="animate-pulse">Deploying...</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span>Initialize</span> <ChevronRight size={12} strokeWidth={4} />
-                          </div>
-                        )}
-                      </Button>
-                      <Button type="button" variant="ghost" className="h-14 w-14 rounded-xl text-zinc-600 hover:bg-rose-950/30 hover:text-rose-500 hover:border-rose-900 border border-transparent transition-all" onClick={() => setIsAdding(false)}>
-                        <X size={20} />
-                      </Button>
+                      
+                      <div className="hidden md:block ml-auto opacity-30">
+                         <span className="text-[9px] font-mono text-zinc-500">ID: {Math.floor(Math.random() * 9999)}</span>
+                      </div>
                     </div>
                   </form>
                 )}
