@@ -253,3 +253,34 @@ async def delete_briefing(briefing_id: int, db: Session = Depends(get_db)):
     notify_dashboard()
 
     return {"message": "Briefing deleted"}
+
+@router.delete(
+    "/{log_id}",
+    status_code=200,
+    summary="Delete daily log",
+    description="Delete a daily log and all associated briefings by ID."
+)
+async def delete_daily_log(log_id: int, db: Session = Depends(get_db)):
+    """
+    Delete a daily log.
+
+    - **log_id**: The ID of the daily log to delete
+
+    This will also delete all associated briefings.
+    Returns 404 if daily log is not found.
+    """
+    db_log = db.query(DailyLog).filter(DailyLog.id == log_id).first()
+    if not db_log:
+        raise HTTPException(status_code=404, detail="Daily log not found")
+
+    # Delete associated briefings first
+    db.query(Briefing).filter(Briefing.daily_log_id == log_id).delete()
+
+    # Delete the daily log
+    db.delete(db_log)
+    db.commit()
+
+    cache_service.invalidate_daily_log(get_local_date())
+    notify_dashboard()
+
+    return {"message": "Daily log deleted"}
