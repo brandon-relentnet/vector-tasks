@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 
@@ -31,12 +31,16 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
   const [timerSetupValue, setTimerSetupValue] = useState(25)
-  // Optimistic UI state for the timer
-  const [optimisticTimerEnd, setOptimisticTimerEnd] = useState<string | null>(null)
+  
+  // Use a ref to track if we just updated the timer locally
+  // This prevents the "flash back" during the network round-trip
+  const optimisticTimerRef = useRef<string | null>(null)
+  const [localTimerEnd, setLocalTimerEnd] = useState<string | null>(null)
 
   // Timer logic
   useEffect(() => {
-    const activeEnd = optimisticTimerEnd || data.dailyLog?.timer_end;
+    // Priority: Local (Optimistic) State > Server State
+    const activeEnd = localTimerEnd || data.dailyLog?.timer_end;
     
     if (!activeEnd) {
       setTimeLeft(null)
@@ -51,7 +55,7 @@ function Dashboard() {
       if (distance < 0) {
         clearInterval(timer)
         setTimeLeft("00:00")
-        if (optimisticTimerEnd) setOptimisticTimerEnd(null)
+        setLocalTimerEnd(null)
       } else {
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
         const seconds = Math.floor((distance % (1000 * 60)) / 1000)
@@ -60,18 +64,39 @@ function Dashboard() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [data.dailyLog?.timer_end, optimisticTimerEnd])
+  }, [data.dailyLog?.timer_end, localTimerEnd])
 
   useEffect(() => {
     const socket = io('http://localhost:8000')
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
     socket.on('update', () => {
-        setOptimisticTimerEnd(null) // Clear optimistic state when server confirms update
+        // Only clear local override once server state matches our optimistic intent
+        setLocalTimerEnd(null)
         router.invalidate()
     })
     return () => { socket.disconnect() }
   }, [router])
+
+  const updateTimer = async (minutes: number | null) => {
+    const timer_end = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
+    
+    // Set local override immediately
+    setLocalTimerEnd(timer_end)
+    if (!timer_end) setTimeLeft(null)
+
+    try {
+      await axios.post('http://localhost:8000/daily-log/update', {
+        id: data.dailyLog.id,
+        date: data.dailyLog.date,
+        timer_end
+      })
+    } catch (error) {
+      console.error('Failed to update timer:', error)
+      setLocalTimerEnd(null) 
+      router.invalidate()
+    }
+  }
 
   const handleStatusUpdate = async (taskId: number, newStatus: string) => {
     try {
@@ -107,33 +132,6 @@ function Dashboard() {
     }
   }
 
-  const updateTimer = async (minutes: number | null) => {
-    const timer_end = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
-    
-    // 1. Optimistic Update: Change the UI immediately
-    setOptimisticTimerEnd(timer_end)
-    if (!timer_end) setTimeLeft(null)
-
-    // FORCE immediate local state update for the clock display
-    if (timer_end) {
-      const minutesStr = Math.floor(minutes!).toString().padStart(2, '0')
-      setTimeLeft(`${minutesStr}:00`)
-    }
-
-    try {
-      // 2. Background Sync: Update the server
-      await axios.post('http://localhost:8000/daily-log/update', {
-        id: data.dailyLog.id,
-        date: data.dailyLog.date,
-        timer_end
-      })
-    } catch (error) {
-      console.error('Failed to update timer:', error)
-      setOptimisticTimerEnd(null) // Revert on failure
-      router.invalidate()
-    }
-  }
-
   const getActiveBriefing = () => {
     if (!data.dailyLog) return null;
     if (data.dailyLog.nightly_reflection) return { type: 'night', icon: <Moon className="h-5 w-5" />, title: 'Nightly Reflection', content: data.dailyLog.nightly_reflection };
@@ -146,6 +144,8 @@ function Dashboard() {
   const filteredQuests = selectedProjectId 
     ? data.quests.filter((q: any) => q.project_id === selectedProjectId)
     : data.quests;
+
+  const isTimerActive = !!(localTimerEnd || data.dailyLog?.timer_end);
 
   return (
     <div className="p-8 space-y-8 max-w-6xl mx-auto pb-20 text-foreground">
@@ -221,19 +221,19 @@ function Dashboard() {
         <div className="space-y-6">
           <Card className="border-2 border-zinc-900 bg-zinc-900 dark:bg-zinc-950 shadow-xl overflow-hidden relative text-white">
             <div className="absolute top-0 right-0 p-3 opacity-5">
-              {timeLeft ? <Hourglass className="h-16 w-16 text-primary animate-pulse" /> : <Clock className="h-16 w-16 text-white" />}
+              {isTimerActive ? <Hourglass className="h-16 w-16 text-primary animate-pulse" /> : <Clock className="h-16 w-16 text-white" />}
             </div>
             <CardHeader className="pb-1 relative z-10">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                {timeLeft ? <Hourglass className="h-3 w-3 text-primary" /> : <Clock className="h-3 w-3" />}
-                {timeLeft ? "Mission Timer" : "Deployment Clock"}
+                {isTimerActive ? <Hourglass className="h-3 w-3 text-primary" /> : <Clock className="h-3 w-3" />}
+                {isTimerActive ? "Mission Timer" : "Deployment Clock"}
               </CardTitle>
             </CardHeader>
             <CardContent className="relative z-10 pt-2">
-              {timeLeft ? (
+              {isTimerActive ? (
                 <div className="flex items-center justify-between group h-24">
                   <div className="text-6xl font-black tracking-tighter text-primary italic leading-none font-mono">
-                    {timeLeft}
+                    {timeLeft || '--:--'}
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="sm" className="h-12 w-12 p-0 text-zinc-500 hover:text-rose-500 hover:bg-zinc-800 rounded-xl" onClick={() => updateTimer(null)}>
@@ -434,8 +434,7 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 bg-card">
-            <Table>
-              <TableBody>
+            <TableBody>
                 {data.history.map((quest: any) => (
                   <TableRow key={quest.id} className="hover:bg-muted border-border group/row last:border-0">
                     <TableCell className="py-4 px-6 line-through text-muted-foreground italic font-bold text-sm tracking-tight opacity-50">{quest.title}</TableCell>
@@ -451,8 +450,7 @@ function Dashboard() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
+            </TableBody>
           </CardContent>
         </Card>
       )}
