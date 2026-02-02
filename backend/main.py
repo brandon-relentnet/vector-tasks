@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, UTC
+from datetime import datetime, UTC, date as py_date
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,18 +54,6 @@ class DailyLog(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 # Schemas
-class DailyLogOut(BaseModel):
-    id: int
-    date: Date
-    big_win: Optional[str] = None
-    starting_nudge: Optional[str] = None
-    morning_briefing: Optional[str] = None
-    nightly_reflection: Optional[str] = None
-    goals_for_tomorrow: List[str] = []
-    reflections: Optional[str] = None
-    model_config = ConfigDict(from_attributes=True)
-
-# Schemas
 class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -108,6 +96,17 @@ class ProjectOut(BaseModel):
     name: str
     description: Optional[str]
     category: Optional[str]
+    model_config = ConfigDict(from_attributes=True)
+
+class DailyLogOut(BaseModel):
+    id: int
+    date: py_date
+    big_win: Optional[str] = None
+    starting_nudge: Optional[str] = None
+    morning_briefing: Optional[str] = None
+    nightly_reflection: Optional[str] = None
+    goals_for_tomorrow: List[str] = []
+    reflections: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 # Socket.IO setup
