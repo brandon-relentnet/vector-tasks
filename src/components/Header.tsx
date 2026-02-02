@@ -25,9 +25,10 @@ export default function Header() {
   
   const [xp, setXp] = useState(0)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
+  const [timerEnd, setTimerEnd] = useState<number | null>(null)
   const [timerActive, setTimerActive] = useState(false)
 
-  // Sync Global Stats (XP and Timer)
+  // Fetch Data (Poll every 5s)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -35,18 +36,10 @@ export default function Header() {
         setXp(data.xp)
         
         if (data.dailyLog?.timer_end) {
+          setTimerEnd(new Date(data.dailyLog.timer_end).getTime())
           setTimerActive(true)
-          const end = new Date(data.dailyLog.timer_end).getTime()
-          const now = Date.now()
-          const distance = end - now
-          if (distance > 0) {
-            const m = Math.floor((distance % 3600000) / 60000)
-            const s = Math.floor((distance % 60000) / 1000)
-            setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
-          } else {
-            setTimeLeft("00:00")
-          }
         } else {
+          setTimerEnd(null)
           setTimerActive(false)
           setTimeLeft(null)
         }
@@ -54,9 +47,30 @@ export default function Header() {
     }
 
     fetchData()
-    const interval = setInterval(fetchData, 5000) // Poll every 5s for global state
+    const interval = setInterval(fetchData, 5000) 
     return () => clearInterval(interval)
   }, [])
+
+  // Local Ticker (Runs every 1s)
+  useEffect(() => {
+    if (!timerEnd) return
+
+    const tick = () => {
+      const now = Date.now()
+      const distance = timerEnd - now
+      if (distance > 0) {
+        const m = Math.floor((distance % 3600000) / 60000)
+        const s = Math.floor((distance % 60000) / 1000)
+        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
+      } else {
+        setTimeLeft("00:00")
+      }
+    }
+
+    tick() // Immediate update
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [timerEnd])
 
   useEffect(() => {
     if (isDark) {

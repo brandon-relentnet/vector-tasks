@@ -39,9 +39,9 @@ function Dashboard() {
     const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8000')
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
-    socket.on('update', () => {
+    socket.on('update', async () => {
+        await router.invalidate()
         setLocalTimerEnd(null)
-        router.invalidate()
     })
     return () => { socket.disconnect() }
   }, [router])
