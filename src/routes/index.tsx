@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 
@@ -100,6 +100,49 @@ function Dashboard() {
           <p className="text-5xl font-black text-primary">{data.xp} XP</p>
         </div>
       </header>
+
+      {/* Daily Briefing / Nightly Reflection Section */}
+      {data.dailyLog && (
+        <Card className="border-primary/50 bg-primary/5 border-2 overflow-hidden">
+          <CardContent className="p-0">
+            <div className="flex flex-col md:flex-row">
+              <div className="p-6 flex-1 space-y-4">
+                <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-sm">
+                  {data.dailyLog.nightly_reflection ? <Moon className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                  {data.dailyLog.nightly_reflection ? "Nightly Reflection" : "Strategic Briefing"}
+                </div>
+                
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold italic">"{data.dailyLog.morning_briefing || "Awaiting intelligence briefing..."}"</h2>
+                  {data.dailyLog.nightly_reflection && (
+                    <p className="text-muted-foreground leading-relaxed">{data.dailyLog.nightly_reflection}</p>
+                  )}
+                </div>
+
+                {data.dailyLog.starting_nudge && !data.dailyLog.nightly_reflection && (
+                  <div className="p-4 bg-background/50 rounded-lg border border-primary/20">
+                    <span className="text-xs font-black uppercase text-primary block mb-1">Starting Nudge</span>
+                    <p className="font-medium">{data.dailyLog.starting_nudge}</p>
+                  </div>
+                )}
+              </div>
+              
+              {data.dailyLog.goals_for_tomorrow?.length > 0 && (
+                <div className="bg-primary/10 p-6 md:w-80 border-l border-primary/20">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-3">Targeted Objectives</h3>
+                  <ul className="space-y-3">
+                    {data.dailyLog.goals_for_tomorrow.map((goal: string, i: number) => (
+                      <li key={i} className="flex gap-2 text-sm font-medium">
+                        <span className="text-primary/50">{i + 1}.</span> {goal}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         {data?.projects?.map((project: any) => (

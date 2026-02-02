@@ -29,20 +29,22 @@ export interface Task {
 
 export const getDashboardData = async () => {
   try {
-    const [tasksRes, projectsRes] = await Promise.all([
+    const [tasksRes, projectsRes, dailyRes] = await Promise.all([
       api.get('/tasks'),
       api.get('/projects'),
+      api.get('/daily-log'),
     ]);
 
     const tasks: Task[] = tasksRes.data;
     const projects: Project[] = projectsRes.data;
+    const dailyLog = dailyRes.data;
 
     const today = new Date().toISOString().split('T')[0];
 
     // Calculate XP (tasks done today)
     const xp = tasks
       .filter(t => t.status === 'Done' && t.updated_at.startsWith(today))
-      .length * 10; // Assuming 10 XP per task for now
+      .length * 10; 
 
     // Active Quests (not Done)
     const quests = tasks
@@ -67,11 +69,12 @@ export const getDashboardData = async () => {
       xp,
       quests: quests.slice(0, 5),
       history,
-      projects: projectsWithCounts
+      projects: projectsWithCounts,
+      dailyLog
     };
   } catch (error) {
     console.error('API Error:', error);
-    return { xp: 0, quests: [], projects: [] };
+    return { xp: 0, quests: [], projects: [], dailyLog: null };
   }
 };
 

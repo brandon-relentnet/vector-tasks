@@ -47,8 +47,23 @@ class DailyLog(Base):
     date = Column(Date, unique=True, default=lambda: datetime.now(UTC).date())
     big_win = Column(Text)
     starting_nudge = Column(Text)
+    morning_briefing = Column(Text)
+    nightly_reflection = Column(Text)
+    goals_for_tomorrow = Column(JSON, default=[])
     reflections = Column(Text)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+# Schemas
+class DailyLogOut(BaseModel):
+    id: int
+    date: Date
+    big_win: Optional[str] = None
+    starting_nudge: Optional[str] = None
+    morning_briefing: Optional[str] = None
+    nightly_reflection: Optional[str] = None
+    goals_for_tomorrow: List[str] = []
+    reflections: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
 
 # Schemas
 class TaskBase(BaseModel):
@@ -188,3 +203,8 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.commit()
     await notify_dashboard()
     return {"message": "Task deleted"}
+
+@app.get("/daily-log", response_model=Optional[DailyLogOut])
+def get_daily_log(db: Session = Depends(get_db)):
+    today = datetime.now(UTC).date()
+    return db.query(DailyLog).filter(DailyLog.date == today).first()
