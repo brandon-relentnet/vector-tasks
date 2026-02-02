@@ -117,3 +117,23 @@ export const deleteTask = async (taskId: number) => {
     throw error;
   }
 };
+
+export const createProject = async (project: { name: string; description?: string; category?: string; parent_id?: number | null }) => {
+  try {
+    const response = await api.post('/projects', project);
+    return response.data;
+  } catch (error) {
+    console.error('Create Project Error:', error);
+    throw error;
+  }
+};
+
+export const deleteProject = async (projectId: number) => {
+  try {
+    const response = await api.delete(`/projects/${projectId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Delete Project Error:', error);
+    throw error;
+  }
+};

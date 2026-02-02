@@ -22,7 +22,9 @@ import { useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
 import {
   api,
+  createProject,
   createTask,
+  deleteProject,
   deleteTask,
   getDashboardData,
   updateTaskStatus,
@@ -65,8 +67,46 @@ function Dashboard() {
     null,
   )
   const [isConnected, setIsConnected] = useState(false)
-  
+
   const [goalIndex, setGoalIndex] = useState(0)
+
+  // Sector creation modal
+  const [isCreatingSector, setIsCreatingSector] = useState(false)
+  const [newSectorName, setNewSectorName] = useState('')
+  const [newSectorParent, setNewSectorParent] = useState<number | null>(null)
+  const [isSubmittingSector, setIsSubmittingSector] = useState(false)
+
+  const handleCreateSector = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newSectorName.trim()) return
+    setIsSubmittingSector(true)
+    try {
+      await createProject({
+        name: newSectorName,
+        parent_id: newSectorParent,
+      })
+      setNewSectorName('')
+      setNewSectorParent(null)
+      setIsCreatingSector(false)
+      await router.invalidate()
+    } catch (error) {
+      console.error(error)
+    }
+    setIsSubmittingSector(false)
+  }
+
+  const handleDeleteSector = async (projectId: number) => {
+    if (!confirm('Delete this sector and all its sub-sectors?')) return
+    try {
+      await deleteProject(projectId)
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId(null)
+      }
+      await router.invalidate()
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   useEffect(() => {
     const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8000')
@@ -349,6 +389,13 @@ function Dashboard() {
             <h3 className="flex items-center gap-2 font-black text-[10px] text-zinc-400 uppercase tracking-[0.2em]">
               <LayoutGrid size={12} /> Sectors
             </h3>
+            <button
+              onClick={() => setIsCreatingSector(true)}
+              className="opacity-40 hover:opacity-100 transition-opacity"
+              title="Create Sector"
+            >
+              <Plus size={14} />
+            </button>
           </div>
           <div className="flex-1 space-y-2 p-4 overflow-y-auto">
             <button
@@ -371,23 +418,36 @@ function Dashboard() {
                   {project.parent_name}
                 </span>
               ) : null
+              const activeCount = data.quests.filter((q: any) => q.project_id === project.id).length
               return (
-                <button
-                  key={project.id}
-                  onClick={() => setSelectedProjectId(project.id)}
-                  className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex flex-col gap-0.5 group ${selectedProjectId === project.id ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black border border-zinc-800' : 'hover:bg-muted text-muted-foreground'} ${indent}`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span>{project.name}</span>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] border-current opacity-50`}
-                    >
-                      {project.active_count}
-                    </Badge>
-                  </div>
-                  {parentName}
-                </button>
+                <div key={project.id} className={`relative group ${indent}`}>
+                  <button
+                    onClick={() => setSelectedProjectId(project.id)}
+                    className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex flex-col gap-0.5 ${selectedProjectId === project.id ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black border border-zinc-800' : 'hover:bg-muted text-muted-foreground'}`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span>{project.name}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] border-current opacity-50`}
+                      >
+                        {activeCount}
+                      </Badge>
+                    </div>
+                    {parentName}
+                  </button>
+                  {/* Delete button on hover */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteSector(project.id)
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-rose-500 transition-all p-1"
+                    title="Delete Sector"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               )
             })}
           </div>
@@ -575,6 +635,85 @@ function Dashboard() {
                   </div>
                 </div>
               </form>
+            )}
+
+            {/* Sector Creation Modal */}
+            {isCreatingSector && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
+                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 w-full max-w-md shadow-2xl slide-in-from-bottom-4 animate-in duration-300">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="flex items-center gap-2 font-black text-primary text-lg uppercase italic tracking-tighter">
+                      <LayoutGrid size={20} /> New Sector
+                    </h3>
+                    <button
+                      onClick={() => setIsCreatingSector(false)}
+                      className="text-zinc-500 hover:text-white transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateSector} className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 font-black text-[10px] text-primary uppercase tracking-[0.2em]">
+                        <LayoutGrid size={12} /> Sector Name
+                      </label>
+                      <input
+                        autoFocus
+                        className="bg-transparent placeholder:opacity-50 py-2 border-zinc-700 focus:border-primary border-b-2 outline-none w-full font-black placeholder:text-zinc-800 text-xl uppercase tracking-tighter transition-all"
+                        placeholder="ENTER SECTOR NAME..."
+                        value={newSectorName}
+                        onChange={(e) => setNewSectorName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 font-black text-[10px] text-zinc-500 uppercase tracking-[0.2em]">
+                        <LayoutGrid size={12} /> Parent Sector (Optional)
+                      </label>
+                      <select
+                        value={newSectorParent || ''}
+                        onChange={(e) => setNewSectorParent(e.target.value ? Number(e.target.value) : null)}
+                        className="bg-zinc-800 border border-zinc-700 rounded-lg py-2 px-3 w-full font-black text-sm uppercase tracking-wider text-zinc-300 outline-none focus:border-primary transition-colors"
+                      >
+                        <option value="">None (Top-Level Sector)</option>
+                        {data.projects
+                          .filter((p: any) => !p.parent_id)  // Only top-level for parent selection
+                          .map((project: any) => (
+                            <option key={project.id} value={project.id}>
+                              {project.name}
+                            </option>
+                          ))}
+                      </select>
+                      <p className="font-mono text-[8px] text-zinc-600 uppercase tracking-wider">
+                        Leave empty for top-level, select parent for sub-sector
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        type="submit"
+                        disabled={isSubmittingSector || !newSectorName.trim()}
+                        className="flex-1 h-12 font-black uppercase tracking-widest text-[10px] bg-primary text-black hover:bg-white rounded-xl transition-all"
+                      >
+                        {isSubmittingSector ? (
+                          <span className="animate-pulse">Creating...</span>
+                        ) : (
+                          'Create Sector'
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsCreatingSector(false)}
+                        className="h-12 px-6 font-black uppercase tracking-widest text-[10px] text-zinc-500 hover:text-white rounded-xl transition-all"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </div>
             )}
 
             <div className="overflow-hidden">
