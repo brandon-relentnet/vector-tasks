@@ -208,3 +208,48 @@ async def mark_goal_completed(
     notify_dashboard()
 
     return db_log
+
+@router.delete(
+    "/briefing/{briefing_id}",
+    status_code=200,
+    summary="Delete briefing",
+    description="Delete a briefing by ID."
+)
+async def delete_briefing(briefing_id: int, db: Session = Depends(get_db)):
+    """
+    Delete a briefing.
+
+    - **briefing_id**: The ID of the briefing to delete
+
+    Returns 404 if briefing is not found.
+    Also clears the deprecated column for that slot type.
+    """
+    briefing = db.query(Briefing).filter(Briefing.id == briefing_id).first()
+    if not briefing:
+        raise HTTPException(status_code=404, detail="Briefing not found")
+
+    # Store slot for clearing deprecated column
+    slot = briefing.slot
+    daily_log_id = briefing.daily_log_id
+
+    db.delete(briefing)
+    db.commit()
+
+    # Clear deprecated column for backward compatibility
+    if slot and daily_log_id:
+        slot_map = {
+            "Morning": "morning_briefing",
+            "Midday": "midday_briefing",
+            "Shutdown": "shutdown_briefing",
+            "Night": "nightly_reflection"
+        }
+        if slot in slot_map:
+            daily_log = db.query(DailyLog).filter(DailyLog.id == daily_log_id).first()
+            if daily_log:
+                setattr(daily_log, slot_map[slot], None)
+                db.commit()
+
+    cache_service.invalidate_daily_log(get_local_date())
+    notify_dashboard()
+
+    return {"message": "Briefing deleted"}
