@@ -4,14 +4,14 @@ services:
       context: .
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
-    ports:
-      - "3000:80"
+    expose:
+      - "80"
     restart: always
 
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
