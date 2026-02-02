@@ -228,15 +228,17 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
 @app.get("/daily-log", response_model=Optional[DailyLogOut])
 def get_daily_log(db: Session = Depends(get_db)):
     # Try Redis for today's log
-    today_str = datetime.now(UTC).date().isoformat()
+    today_date = datetime.now(UTC).date()
+    today_str = today_date.isoformat()
     cached = r.get(f"log:{today_str}")
     if cached:
         return json.loads(cached)
 
-    today = datetime.now(UTC).date()
-    log = db.query(DailyLog).filter(DailyLog.date == today).first()
+    log = db.query(DailyLog).filter(DailyLog.date == today_date).first()
     if log:
-        r.setex(f"log:{today_str}", 60, json.dumps(DailyLogOut.model_validate(log).model_dump(mode='json')))
+        # Crucial fix: ensure date and timer_end are handled by Pydantic's model_dump(mode='json')
+        log_data = DailyLogOut.model_validate(log).model_dump(mode='json')
+        r.setex(f"log:{today_str}", 60, json.dumps(log_data))
     return log
 
 @app.get("/daily-log/history", response_model=List[DailyLogOut])
