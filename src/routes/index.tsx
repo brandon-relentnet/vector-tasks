@@ -432,12 +432,8 @@ function Dashboard() {
             </button>
             <div className="opacity-50 mx-2 my-2 bg-border h-px" />
             {sortedProjects.map((project: any) => {
-              const indent = project.parent_id ? 'pl-6' : ''
-              const parentName = project.parent_name ? (
-                <span className="block font-mono text-[8px] opacity-50 tracking-wider">
-                  {project.parent_name}
-                </span>
-              ) : null
+              const isSubSector = !!project.parent_id
+              const indent = isSubSector ? 'pl-6' : ''
               const activeCount = data.quests.filter((q: any) => q.project_id === project.id).length
               return (
                 <div key={project.id} className={`relative group ${indent}`}>
@@ -465,7 +461,12 @@ function Dashboard() {
                         {activeCount}
                       </Badge>
                     </div>
-                    {parentName}
+                    {/* Parent name aligned with sub-sector title */}
+                    {isSubSector && project.parent_name && (
+                      <span className="block font-mono text-[8px] opacity-50 tracking-wider pl-6">
+                        {project.parent_name}
+                      </span>
+                    )}
                   </button>
                 </div>
               )
