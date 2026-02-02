@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getBriefingHistory } from '../data/dashboard-fns'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Sparkles, Moon, Calendar, ChevronLeft, ChevronRight, Filter, Zap, LogOut, History as HistoryIcon, Target } from 'lucide-react'
+import { Sparkles, Moon, Calendar, ChevronLeft, ChevronRight, Zap, LogOut, History as HistoryIcon, Target } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -56,15 +56,15 @@ function BriefingsPage() {
               Intelligence History
             </div>
           </div>
-          <p className="text-zinc-500 font-medium tracking-tight italic">Reviewing Historical Data and Operational Progression.</p>
+          <p className="text-zinc-500 font-medium tracking-tight italic">Tactical progression logs and historical data.</p>
         </div>
         
-        <div className="flex items-center gap-1 bg-zinc-900 p-1.5 rounded-2xl shadow-xl border-b-4 border-primary">
+        <div className="flex items-center gap-1 bg-zinc-900 p-1.5 rounded-2xl shadow-xl border-b-4 border-zinc-800">
           <Button 
             variant={masterFilter === 'all' ? "default" : "ghost"} 
             size="sm" 
             onClick={() => handleMasterFilter('all')}
-            className={`text-[10px] font-black uppercase px-4 h-9 tracking-widest transition-all ${masterFilter === 'all' ? 'bg-primary text-black hover:bg-primary/90' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
+            className={`text-[10px] font-black uppercase px-4 h-9 tracking-widest transition-all ${masterFilter === 'all' ? 'bg-primary text-zinc-900 hover:bg-primary/90' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
           >
             All
           </Button>
@@ -75,7 +75,7 @@ function BriefingsPage() {
               variant={masterFilter === f ? "default" : "ghost"} 
               size="sm" 
               onClick={() => handleMasterFilter(f as any)}
-              className={`text-[10px] font-black uppercase px-4 h-9 tracking-widest transition-all ${masterFilter === f ? 'bg-primary text-black hover:bg-primary/90' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
+              className={`text-[10px] font-black uppercase px-4 h-9 tracking-widest transition-all ${masterFilter === f ? 'bg-primary text-zinc-900 hover:bg-primary/90' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
             >
               {f}
             </Button>
@@ -88,10 +88,10 @@ function BriefingsPage() {
           const activeTab = localOverrides[log.id] || (masterFilter !== 'all' ? masterFilter : 'morning');
           
           return (
-            <div key={log.id} className="relative pl-12 border-l-4 border-zinc-100 hover:border-primary/50 transition-all pb-4 group">
+            <div key={log.id} className="relative pl-12 border-l-4 border-zinc-100 hover:border-primary/30 transition-all pb-4 group">
               <div className="absolute -left-[14px] top-0 bg-white ring-8 ring-white rounded-full p-0.5">
                 <div className="bg-zinc-900 rounded-full p-1.5 group-hover:bg-primary transition-colors shadow-xl">
-                  <Calendar className="h-4 w-4 text-white group-hover:text-black transition-colors" />
+                  <Calendar className="h-4 w-4 text-white group-hover:text-zinc-900 transition-colors" />
                 </div>
               </div>
               
@@ -102,18 +102,13 @@ function BriefingsPage() {
                 <div className="h-px flex-1 bg-zinc-100" />
               </div>
 
-              <Card className={`border-2 overflow-hidden shadow-lg rounded-2xl ${
-                activeTab === 'night' ? 'border-indigo-200 bg-indigo-50/20' :
-                activeTab === 'shutdown' ? 'border-zinc-300 bg-zinc-50' :
-                activeTab === 'midday' ? 'border-blue-200 bg-blue-50/20' :
-                'border-amber-200 bg-amber-50/20'
-              }`}>
-                <div className="flex border-b border-zinc-200/50 bg-zinc-900/5 backdrop-blur-md">
+              <Card className="border-2 border-zinc-200 overflow-hidden shadow-sm rounded-2xl transition-all bg-white">
+                <div className="flex border-b border-zinc-100 bg-zinc-50/50">
                   {[
-                    { id: 'morning', icon: <Sparkles className="h-3.5 w-3.5" />, color: 'text-amber-700', activeBg: 'bg-amber-50', label: 'Morning' },
-                    { id: 'midday', icon: <Zap className="h-3.5 w-3.5" />, color: 'text-blue-700', activeBg: 'bg-blue-50', label: 'Mid-Day' },
-                    { id: 'shutdown', icon: <LogOut className="h-3.5 w-3.5" />, color: 'text-zinc-700', activeBg: 'bg-zinc-100', label: 'Shutdown' },
-                    { id: 'night', icon: <Moon className="h-3.5 w-3.5" />, color: 'text-indigo-700', activeBg: 'bg-indigo-50', label: 'Nightly' }
+                    { id: 'morning', icon: <Sparkles className="h-3.5 w-3.5" />, label: 'Morning' },
+                    { id: 'midday', icon: <Zap className="h-3.5 w-3.5" />, label: 'Mid-Day' },
+                    { id: 'shutdown', icon: <LogOut className="h-3.5 w-3.5" />, label: 'Shutdown' },
+                    { id: 'night', icon: <Moon className="h-3.5 w-3.5" />, label: 'Nightly' }
                   ].map((tab) => {
                     const exists = tab.id === 'morning' ? log.morning_briefing : tab.id === 'midday' ? log.midday_briefing : tab.id === 'shutdown' ? log.shutdown_briefing : log.nightly_reflection;
                     return (
@@ -123,27 +118,27 @@ function BriefingsPage() {
                         disabled={!exists}
                         className={`flex-1 flex items-center justify-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-10 ${
                           activeTab === tab.id 
-                            ? `bg-white ${tab.color} shadow-sm border-x border-zinc-200/50 first:border-l-0 last:border-r-0` 
-                            : 'text-zinc-400 hover:text-zinc-600 hover:bg-white/50'
+                            ? `bg-white text-zinc-900 shadow-sm border-x border-zinc-100 first:border-l-0 last:border-r-0` 
+                            : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100/50'
                         }`}
                       >
-                        {tab.icon}
+                        <span className={activeTab === tab.id ? "text-primary" : ""}>{tab.icon}</span>
                         {tab.label}
                       </button>
                     )
                   })}
                 </div>
 
-                <CardContent className="p-10 min-h-[180px] flex flex-col justify-center bg-white/40">
+                <CardContent className="p-10 min-h-[180px] flex flex-col justify-center">
                   {activeTab === 'morning' && (
-                    <div className="space-y-6">
-                      <p className="text-3xl font-bold italic tracking-tight leading-tight text-zinc-900">"{log.morning_briefing || "Awaiting Intelligence..."}"</p>
+                    <div className="space-y-6 text-center md:text-left">
+                      <p className="text-3xl font-black italic tracking-tight leading-tight text-zinc-900">"{log.morning_briefing || "Awaiting Intelligence..."}"</p>
                       {log.starting_nudge && (
-                        <div className="p-5 bg-white rounded-xl border-2 border-dashed border-amber-200 shadow-sm flex items-center gap-5">
-                          <Zap className="h-6 w-6 text-amber-500 shrink-0" />
+                        <div className="p-5 bg-zinc-50 rounded-xl border border-zinc-200 flex items-center gap-5 max-w-2xl">
+                          <Zap className="h-6 w-6 text-primary shrink-0" />
                           <div>
-                            <span className="text-[10px] font-black uppercase text-amber-600 block mb-1 tracking-widest">Starting Nudge</span>
-                            <p className="font-bold text-zinc-800 text-lg leading-tight">{log.starting_nudge}</p>
+                            <span className="text-[10px] font-black uppercase text-zinc-400 block mb-1 tracking-widest">Starting Nudge</span>
+                            <p className="font-bold text-zinc-800 text-lg leading-tight uppercase italic">{log.starting_nudge}</p>
                           </div>
                         </div>
                       )}
@@ -151,28 +146,28 @@ function BriefingsPage() {
                   )}
 
                   {activeTab === 'midday' && (
-                    <p className="text-3xl font-bold italic tracking-tight leading-tight text-blue-800">"{log.midday_briefing}"</p>
+                    <p className="text-3xl font-black italic tracking-tight leading-tight text-zinc-900">"{log.midday_briefing}"</p>
                   )}
 
                   {activeTab === 'shutdown' && (
-                    <p className="text-3xl font-bold italic tracking-tight leading-tight text-zinc-700">"{log.shutdown_briefing}"</p>
+                    <p className="text-3xl font-black italic tracking-tight leading-tight text-zinc-900">"{log.shutdown_briefing}"</p>
                   )}
 
                   {activeTab === 'night' && (
                     <div className="flex flex-col md:flex-row gap-12">
                       <div className="flex-1">
-                        <p className="text-xl font-bold text-zinc-800 leading-relaxed italic">"{log.nightly_reflection}"</p>
+                        <p className="text-2xl font-black text-zinc-900 leading-relaxed italic">"{log.nightly_reflection}"</p>
                       </div>
                       {log.goals_for_tomorrow?.length > 0 && (
-                        <div className="md:w-80 p-8 bg-white rounded-2xl border-2 border-indigo-100 shadow-xl flex flex-col justify-center">
-                          <span className="text-[10px] font-black uppercase text-indigo-600 block mb-5 tracking-widest flex items-center gap-2">
-                            <Target className="h-4 w-4" /> Targeted Objectives
+                        <div className="md:w-80 p-8 bg-zinc-50 rounded-2xl border border-zinc-200 shadow-sm flex flex-col justify-center">
+                          <span className="text-[10px] font-black uppercase text-zinc-500 block mb-5 tracking-widest flex items-center gap-2">
+                            <Target className="h-4 w-4 text-primary" /> Tomorrow's Targets
                           </span>
                           <ul className="space-y-4">
                             {log.goals_for_tomorrow.map((goal: string, i: number) => (
                               <li key={i} className="flex gap-4 text-sm font-bold items-start leading-snug">
-                                <span className="bg-indigo-600 text-white h-5 w-5 rounded flex items-center justify-center shrink-0 text-[10px] font-black">{i + 1}</span> 
-                                <span className="text-zinc-800 italic">{goal}</span>
+                                <span className="bg-zinc-900 text-white h-5 w-5 rounded flex items-center justify-center shrink-0 text-[10px] font-black">{i + 1}</span> 
+                                <span className="text-zinc-800 italic uppercase">{goal}</span>
                               </li>
                             ))}
                           </ul>
@@ -203,16 +198,16 @@ function BriefingsPage() {
             onClick={() => handlePageChange(-1)}
             className="font-black uppercase tracking-widest text-[10px] border-2 border-zinc-200 hover:border-zinc-900 hover:bg-zinc-900 hover:text-white h-12 px-8 rounded-xl transition-all"
           >
-            <ChevronLeft className="h-4 w-4 mr-2" /> Back
+            Back
           </Button>
           <Button 
             variant="outline" 
-            size="sm"
+            size="sm" 
             disabled={history.length < limit}
             onClick={() => handlePageChange(1)}
             className="font-black uppercase tracking-widest text-[10px] border-2 border-zinc-200 hover:border-zinc-900 hover:bg-zinc-900 hover:text-white h-12 px-8 rounded-xl transition-all"
           >
-            Next <ChevronRight className="h-4 w-4 ml-2" />
+            Next
           </Button>
         </div>
       </div>
