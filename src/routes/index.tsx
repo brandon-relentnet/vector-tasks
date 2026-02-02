@@ -1,10 +1,10 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { getDashboardData, updateTaskStatus, createTask, deleteTask } from '../data/dashboard-fns'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -85,10 +85,10 @@ function Dashboard() {
 
   const getActiveBriefing = () => {
     if (!data.dailyLog) return null;
-    if (data.dailyLog.nightly_reflection) return { type: 'night', icon: <Moon className="h-5 w-5" />, title: 'Nightly Reflection', content: data.dailyLog.nightly_reflection };
-    if (data.dailyLog.shutdown_briefing) return { type: 'shutdown', icon: <LogOut className="h-5 w-5" />, title: 'Shutdown Ritual', content: data.dailyLog.shutdown_briefing };
-    if (data.dailyLog.midday_briefing) return { type: 'midday', icon: <Zap className="h-5 w-5" />, title: 'Mid-Day Pivot', content: data.dailyLog.midday_briefing };
-    return { type: 'morning', icon: <Sparkles className="h-5 w-5" />, title: 'Strategic Briefing', content: data.dailyLog.morning_briefing || "Awaiting intelligence briefing..." };
+    if (data.dailyLog.nightly_reflection) return { type: 'night', icon: <Moon className="h-5 w-5" />, title: 'Nightly Reflection', content: data.dailyLog.nightly_reflection, accent: 'text-indigo-500' };
+    if (data.dailyLog.shutdown_briefing) return { type: 'shutdown', icon: <LogOut className="h-5 w-5" />, title: 'Shutdown Ritual', content: data.dailyLog.shutdown_briefing, accent: 'text-zinc-500' };
+    if (data.dailyLog.midday_briefing) return { type: 'midday', icon: <Zap className="h-5 w-5" />, title: 'Mid-Day Pivot', content: data.dailyLog.midday_briefing, accent: 'text-blue-500' };
+    return { type: 'morning', icon: <Sparkles className="h-5 w-5" />, title: 'Strategic Briefing', content: data.dailyLog.morning_briefing || "Awaiting intelligence briefing...", accent: 'text-amber-500' };
   }
 
   const activeBriefing = getActiveBriefing();
@@ -100,29 +100,54 @@ function Dashboard() {
 
   return (
     <div className="h-[calc(100vh-65px)] flex flex-col overflow-hidden text-foreground">
-      {/* TOP ROW: Strategic Command Bar */}
-      <div className="flex border-b border-border bg-card/80 backdrop-blur-xl h-24 overflow-hidden shadow-sm">
-        {/* Expanded Strategic Orders */}
-        <div className="flex-1 p-6 min-w-0 flex items-center">
-          {activeBriefing ? (
-            <div className="flex items-center gap-6 animate-in fade-in slide-in-from-left-4 duration-500 w-full">
-              <div className="bg-muted p-3 rounded-2xl border border-border shadow-inner shrink-0">
-                <span className="text-primary">{activeBriefing.icon}</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                  {activeBriefing.title} // Intelligence Feed
-                </p>
-                <h2 className="text-2xl font-black italic tracking-tight leading-none text-foreground">
+      {/* TOP ROW: High-Performance Strategic Briefing */}
+      <div className="bg-zinc-900 dark:bg-zinc-950 border-b border-zinc-800 shadow-2xl relative overflow-hidden">
+        {/* Subtle Background HUD Effect */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_50%,var(--primary),transparent_25%)]" />
+        </div>
+        
+        <div className="max-w-[1600px] mx-auto flex items-stretch h-32 relative z-10">
+          {/* Status Pillar */}
+          <div className="px-8 border-r border-zinc-800 flex flex-col justify-center items-center gap-1 bg-black/20">
+            <div className="h-12 w-12 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center shadow-inner">
+               <Terminal size={24} className="text-primary" />
+            </div>
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mt-2">Status</span>
+            <span className="text-[10px] font-black uppercase text-primary tracking-widest italic leading-none">Nominal</span>
+          </div>
+
+          {/* Main Briefing Content */}
+          <div className="flex-1 p-8 flex flex-col justify-center min-w-0">
+            {activeBriefing ? (
+              <div className="animate-in fade-in slide-in-from-left-4 duration-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`${activeBriefing.accent} animate-pulse`}>{activeBriefing.icon}</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">
+                    {activeBriefing.title} // Current Phase
+                  </span>
+                  <div className="h-px w-24 bg-zinc-800 ml-2" />
+                </div>
+                <h2 className="text-3xl font-black italic tracking-tighter leading-none text-white uppercase break-words">
                   "{activeBriefing.content}"
                 </h2>
               </div>
-            </div>
-          ) : (
-            <div className="animate-pulse flex items-center gap-4 text-muted-foreground italic font-medium">
-               Synchronizing with high-command...
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center gap-4 text-zinc-600 animate-pulse uppercase font-black tracking-widest text-xs">
+                 Initialising Strategic Link...
+              </div>
+            )}
+          </div>
+
+          {/* Big Win Badge */}
+          <div className="w-80 p-8 border-l border-zinc-800 flex flex-col justify-center items-end bg-black/40">
+             <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-3 flex items-center gap-2">
+               <Target size={10} className="text-primary" /> Primary Objective
+             </span>
+             <div className="text-xl font-black text-right text-primary italic uppercase leading-tight tracking-tighter">
+               {data.dailyLog?.big_win || "AWAITING MISSION"}
+             </div>
+          </div>
         </div>
       </div>
 
@@ -137,7 +162,7 @@ function Dashboard() {
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             <button 
               onClick={() => setSelectedProjectId(null)}
-              className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex items-center justify-between ${!selectedProjectId ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black' : 'hover:bg-muted text-muted-foreground'}`}
+              className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex items-center justify-between ${!selectedProjectId ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black border border-zinc-800' : 'hover:bg-muted text-muted-foreground'}`}
             >
               Master Feed
               <Badge variant="outline" className={`text-[10px] border-current opacity-50`}>
@@ -149,7 +174,7 @@ function Dashboard() {
               <button 
                 key={project.id} 
                 onClick={() => setSelectedProjectId(project.id)}
-                className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex items-center justify-between group ${selectedProjectId === project.id ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black' : 'hover:bg-muted text-muted-foreground'}`}
+                className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex items-center justify-between group ${selectedProjectId === project.id ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black border border-zinc-800' : 'hover:bg-muted text-muted-foreground'}`}
               >
                 {project.name}
                 <Badge variant="outline" className={`text-[10px] border-current opacity-50`}>
@@ -159,7 +184,7 @@ function Dashboard() {
             ))}
           </div>
 
-          {/* New Timer Control Sidebar Module */}
+          {/* Timer Control Sidebar Module */}
           {!isTimerActive && (
             <div className="p-4 mx-4 mb-4 bg-zinc-900 dark:bg-zinc-950 rounded-2xl border border-zinc-800 shadow-xl space-y-4 animate-in fade-in slide-in-from-bottom-2">
               <div className="flex items-center justify-between">
@@ -195,9 +220,9 @@ function Dashboard() {
           <div className="p-6 bg-muted/20 border-t border-border mt-auto">
              <div className="flex items-center gap-2 text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
                <Wifi size={10} className={isConnected ? 'text-primary' : 'text-rose-500'} /> 
-               Comms: {isConnected ? 'Stable' : 'Offline'}
+               Status: {isConnected ? 'Synchronized' : 'Standalone'}
              </div>
-             <div className="text-[8px] font-bold text-zinc-300 uppercase tracking-widest">Vector Core v1.2</div>
+             <div className="text-[8px] font-bold text-zinc-300 uppercase tracking-widest">Vector Command Core v1.2</div>
           </div>
         </div>
 
