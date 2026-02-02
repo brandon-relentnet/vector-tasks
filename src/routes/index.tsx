@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Settings } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -209,38 +209,40 @@ function Dashboard() {
                 {timeLeft ? "Mission Timer" : "Deployment Clock"}
               </CardTitle>
               {!timeLeft && !isTimerInputOpen && (
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-black border border-zinc-700 hover:bg-zinc-800" onClick={() => setIsTimerInputOpen(true)}>
-                  INITIATE
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-zinc-500 hover:text-primary hover:bg-zinc-800 transition-all" onClick={() => setIsTimerInputOpen(true)}>
+                  <Settings className="h-3.5 w-3.5" />
                 </Button>
               )}
             </CardHeader>
-            <CardContent className="relative z-10">
+            <CardContent className="relative z-10 pt-2">
               {isTimerInputOpen ? (
-                <div className="flex gap-2 items-center animate-in fade-in slide-in-from-right-2">
-                  <input 
-                    type="number"
-                    autoFocus
-                    className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xl font-bold font-mono text-primary outline-none"
-                    value={customTimerMinutes}
-                    onChange={e => setCustomTimerMinutes(e.target.value)}
-                  />
-                  <span className="text-[10px] font-black text-zinc-500 uppercase">MIN</span>
-                  <Button size="sm" className="bg-primary text-black font-black text-[9px] h-8" onClick={() => updateTimer(parseInt(customTimerMinutes))}>GO</Button>
-                  <Button variant="ghost" size="sm" className="text-zinc-500 h-8" onClick={() => setIsTimerInputOpen(false)}><X className="h-4 w-4" /></Button>
+                <div className="flex gap-2 items-center animate-in fade-in slide-in-from-top-2">
+                  <div className="flex-1 flex items-center bg-zinc-800 rounded-lg px-2 border border-zinc-700 focus-within:border-primary transition-all">
+                    <input 
+                      type="number"
+                      autoFocus
+                      className="w-full bg-transparent py-2 text-2xl font-black font-mono text-primary outline-none"
+                      value={customTimerMinutes}
+                      onChange={e => setCustomTimerMinutes(e.target.value)}
+                    />
+                    <span className="text-[8px] font-black text-zinc-500 uppercase ml-1">MIN</span>
+                  </div>
+                  <Button size="sm" className="bg-primary text-black font-black text-[10px] h-10 px-4" onClick={() => updateTimer(parseInt(customTimerMinutes))}>START</Button>
+                  <Button variant="ghost" size="sm" className="text-zinc-500 h-10 w-10" onClick={() => setIsTimerInputOpen(false)}><X className="h-4 w-4" /></Button>
                 </div>
               ) : timeLeft ? (
-                <div className="flex items-center justify-between group">
-                  <div className="text-5xl font-black tracking-tighter text-primary italic leading-none py-2 font-mono">
+                <div className="flex items-center justify-between group h-12">
+                  <div className="text-5xl font-black tracking-tighter text-primary italic leading-none font-mono">
                     {timeLeft}
                   </div>
-                  <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-500 hover:text-red-500" onClick={() => updateTimer(null)}>
-                      <Square className="h-4 w-4 fill-current" />
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-zinc-500 hover:text-rose-500 hover:bg-zinc-800" onClick={() => updateTimer(null)}>
+                      <Square className="h-5 w-5 fill-current" />
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="text-2xl font-black tracking-tighter text-zinc-600 uppercase italic leading-tight">
+                <div className="text-2xl font-black tracking-tighter text-zinc-700 uppercase italic leading-tight h-12 flex items-center">
                   Standby
                 </div>
               )}
