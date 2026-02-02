@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 
@@ -25,79 +25,89 @@ export const Route = createFileRoute('/')({
 function Dashboard() {
   const data = Route.useLoaderData()
   const router = useRouter()
+  
+  // UI States
   const [isAdding, setIsAdding] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
-  const [timeLeft, setTimeLeft] = useState<string | null>(null)
+  
+  // Timer Setup State
   const [timerSetupValue, setTimerSetupValue] = useState(25)
   
-  // Use a ref to track if we just updated the timer locally
-  // This prevents the "flash back" during the network round-trip
-  const optimisticTimerRef = useRef<string | null>(null)
-  const [localTimerEnd, setLocalTimerEnd] = useState<string | null>(null)
+  // Core Timer State (Single source of truth for the countdown)
+  const [activeTimerEnd, setActiveTimerEnd] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState<string | null>(null)
 
-  // Timer logic
+  // 1. Sync activeTimerEnd with incoming server data
   useEffect(() => {
-    // Priority: Local (Optimistic) State > Server State
-    const activeEnd = localTimerEnd || data.dailyLog?.timer_end;
-    
-    if (!activeEnd) {
+    if (data.dailyLog?.timer_end) {
+      setActiveTimerEnd(data.dailyLog.timer_end)
+    } else {
+      setActiveTimerEnd(null)
       setTimeLeft(null)
-      return
     }
+  }, [data.dailyLog?.timer_end])
 
-    const timer = setInterval(() => {
-      const end = new Date(activeEnd).getTime()
-      const now = new Date().getTime()
+  // 2. The Countdown Loop (Driven by activeTimerEnd)
+  useEffect(() => {
+    if (!activeTimerEnd) return
+
+    const tick = () => {
+      const end = new Date(activeTimerEnd).getTime()
+      const now = Date.now()
       const distance = end - now
 
-      if (distance < 0) {
-        clearInterval(timer)
+      if (distance <= 0) {
         setTimeLeft("00:00")
-        setLocalTimerEnd(null)
-      } else {
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000)
-        setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        return false
       }
+
+      const m = Math.floor((distance % 3600000) / 60000)
+      const s = Math.floor((distance % 60000) / 1000)
+      setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
+      return true
+    }
+
+    tick() // Initial tick
+    const interval = setInterval(() => {
+      if (!tick()) clearInterval(interval)
     }, 1000)
 
-    return () => clearInterval(timer)
-  }, [data.dailyLog?.timer_end, localTimerEnd])
+    return () => clearInterval(interval)
+  }, [activeTimerEnd])
 
+  // 3. Socket.IO Listener
   useEffect(() => {
     const socket = io('http://localhost:8000')
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
-    socket.on('update', () => {
-        // Only clear local override once server state matches our optimistic intent
-        setLocalTimerEnd(null)
-        router.invalidate()
-    })
+    socket.on('update', () => router.invalidate())
     return () => { socket.disconnect() }
   }, [router])
 
-  const updateTimer = async (minutes: number | null) => {
-    const timer_end = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
+  // Timer Control Handler (Optimistic)
+  const handleTimerAction = async (minutes: number | null) => {
+    const newEnd = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
     
-    // Set local override immediately
-    setLocalTimerEnd(timer_end)
-    if (!timer_end) setTimeLeft(null)
+    // ACTION 1: Update local state immediately for instant UI response
+    setActiveTimerEnd(newEnd)
+    if (!newEnd) setTimeLeft(null)
 
     try {
+      // ACTION 2: Sync to Server
       await axios.post('http://localhost:8000/daily-log/update', {
         id: data.dailyLog.id,
         date: data.dailyLog.date,
-        timer_end
+        timer_end: newEnd
       })
     } catch (error) {
-      console.error('Failed to update timer:', error)
-      setLocalTimerEnd(null) 
-      router.invalidate()
+      console.error('Timer sync failed:', error)
+      router.invalidate() // Rollback to server state on error
     }
   }
 
+  // Task Handlers
   const handleStatusUpdate = async (taskId: number, newStatus: string) => {
     try {
       await updateTaskStatus(taskId, newStatus)
@@ -124,7 +134,7 @@ function Dashboard() {
   }
 
   const handleDeleteTask = async (taskId: number) => {
-    if (!confirm('Are you sure you want to delete this quest?')) return
+    if (!confirm('Delete quest?')) return
     try {
       await deleteTask(taskId)
     } catch (error) {
@@ -145,14 +155,12 @@ function Dashboard() {
     ? data.quests.filter((q: any) => q.project_id === selectedProjectId)
     : data.quests;
 
-  const isTimerActive = !!(localTimerEnd || data.dailyLog?.timer_end);
-
   return (
     <div className="p-8 space-y-8 max-w-6xl mx-auto pb-20 text-foreground">
       <header className="flex justify-between items-center border-b pb-6 border-border">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-4xl font-black tracking-tighter uppercase italic text-zinc-900 dark:text-zinc-50">Vector Command</h1>
+            <h1 className="text-4xl font-black tracking-tighter uppercase italic">Vector Command</h1>
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border`}>
               <div className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-primary animate-pulse shadow-[0_0_5px_var(--primary)]' : 'bg-rose-500'}`} />
               {isConnected ? 'Link Active' : 'Offline'}
@@ -219,36 +227,36 @@ function Dashboard() {
         )}
 
         <div className="space-y-6">
-          <Card className="border-2 border-zinc-900 bg-zinc-900 dark:bg-zinc-950 shadow-xl overflow-hidden relative text-white">
+          <Card className="border-2 border-zinc-900 bg-zinc-900 dark:bg-zinc-950 shadow-xl overflow-hidden relative text-white min-h-[160px]">
             <div className="absolute top-0 right-0 p-3 opacity-5">
-              {isTimerActive ? <Hourglass className="h-16 w-16 text-primary animate-pulse" /> : <Clock className="h-16 w-16 text-white" />}
+              {activeTimerEnd ? <Hourglass className="h-16 w-16 text-primary animate-pulse" /> : <Clock className="h-16 w-16 text-white" />}
             </div>
             <CardHeader className="pb-1 relative z-10">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                {isTimerActive ? <Hourglass className="h-3 w-3 text-primary" /> : <Clock className="h-3 w-3" />}
-                {isTimerActive ? "Mission Timer" : "Deployment Clock"}
+                {activeTimerEnd ? <Hourglass className="h-3 w-3 text-primary" /> : <Clock className="h-3 w-3" />}
+                {activeTimerEnd ? "Mission Timer" : "Standby Clock"}
               </CardTitle>
             </CardHeader>
             <CardContent className="relative z-10 pt-2">
-              {isTimerActive ? (
-                <div className="flex items-center justify-between group h-24">
+              {activeTimerEnd ? (
+                <div className="flex items-center justify-between group h-20">
                   <div className="text-6xl font-black tracking-tighter text-primary italic leading-none font-mono">
                     {timeLeft || '--:--'}
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm" className="h-12 w-12 p-0 text-zinc-500 hover:text-rose-500 hover:bg-zinc-800 rounded-xl" onClick={() => updateTimer(null)}>
+                    <Button variant="ghost" size="sm" className="h-12 w-12 p-0 text-zinc-500 hover:text-rose-500 hover:bg-zinc-800 rounded-xl" onClick={() => handleTimerAction(null)}>
                       <Square className="h-6 w-6 fill-current" />
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 py-2">
+                <div className="space-y-4 py-2 animate-in fade-in zoom-in-95 duration-300">
                   <div className="flex items-center justify-center gap-6">
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       className="h-10 w-10 p-0 rounded-full border-2 border-zinc-800 text-zinc-400 hover:text-primary hover:border-primary transition-all"
-                      onClick={() => setTimerSetupValue(Math.max(1, timerSetupValue - 5))}
+                      onClick={() => setTimerSetupValue(v => Math.max(1, v - 5))}
                     >
                       <Minus className="h-5 w-5" />
                     </Button>
@@ -260,14 +268,14 @@ function Dashboard() {
                       variant="ghost" 
                       size="sm" 
                       className="h-10 w-10 p-0 rounded-full border-2 border-zinc-800 text-zinc-400 hover:text-primary hover:border-primary transition-all"
-                      onClick={() => setTimerSetupValue(timerSetupValue + 5)}
+                      onClick={() => setTimerSetupValue(v => v + 5)}
                     >
                       <Plus className="h-5 w-5" />
                     </Button>
                   </div>
                   <Button 
                     className="w-full bg-primary text-black font-black uppercase tracking-[0.2em] text-[10px] h-10 shadow-[0_4px_10px_rgba(255,190,0,0.2)] hover:shadow-[0_4px_15px_rgba(255,190,0,0.4)] transition-all"
-                    onClick={() => updateTimer(timerSetupValue)}
+                    onClick={() => handleTimerAction(timerSetupValue)}
                   >
                     Deploy Mission
                   </Button>
@@ -291,7 +299,7 @@ function Dashboard() {
                   <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${selectedProjectId === project.id ? 'bg-primary text-zinc-900' : 'bg-muted text-muted-foreground'}`}>
                     {project.name}
                   </span>
-                  <Badge variant="outline" className={`text-[10px] font-black border-2 ${selectedProjectId === project.id ? 'border-primary/30 text-zinc-900' : 'border-border text-muted-foreground'}`}>
+                  <Badge variant="outline" className={`text-[10px] font-black border-2 ${selectedProjectId === project.id ? 'border-primary/30 text-foreground' : 'border-border text-muted-foreground'}`}>
                     {project.active_count} ACT
                   </Badge>
                 </div>
@@ -434,7 +442,8 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 bg-card">
-            <TableBody>
+            <Table>
+              <TableBody>
                 {data.history.map((quest: any) => (
                   <TableRow key={quest.id} className="hover:bg-muted border-border group/row last:border-0">
                     <TableCell className="py-4 px-6 line-through text-muted-foreground italic font-bold text-sm tracking-tight opacity-50">{quest.title}</TableCell>
@@ -450,7 +459,8 @@ function Dashboard() {
                     </TableCell>
                   </TableRow>
                 ))}
-            </TableBody>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
