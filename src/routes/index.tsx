@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Settings } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -30,8 +30,7 @@ function Dashboard() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
-  const [isTimerInputOpen, setIsTimerInputOpen] = useState(false)
-  const [customTimerMinutes, setCustomTimerMinutes] = useState('15')
+  const [timerSetupValue, setTimerSetupValue] = useState(25)
 
   // Timer logic
   useEffect(() => {
@@ -108,7 +107,6 @@ function Dashboard() {
         date: data.dailyLog.date,
         timer_end
       })
-      setIsTimerInputOpen(false)
     } catch (error) {
       console.error('Failed to update timer:', error)
     }
@@ -203,47 +201,54 @@ function Dashboard() {
             <div className="absolute top-0 right-0 p-3 opacity-5">
               {timeLeft ? <Hourglass className="h-16 w-16 text-primary animate-pulse" /> : <Clock className="h-16 w-16 text-white" />}
             </div>
-            <CardHeader className="pb-1 relative z-10 flex flex-row items-center justify-between">
+            <CardHeader className="pb-1 relative z-10">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
                 {timeLeft ? <Hourglass className="h-3 w-3 text-primary" /> : <Clock className="h-3 w-3" />}
                 {timeLeft ? "Mission Timer" : "Deployment Clock"}
               </CardTitle>
-              {!timeLeft && !isTimerInputOpen && (
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-zinc-500 hover:text-primary hover:bg-zinc-800 transition-all" onClick={() => setIsTimerInputOpen(true)}>
-                  <Settings className="h-3.5 w-3.5" />
-                </Button>
-              )}
             </CardHeader>
             <CardContent className="relative z-10 pt-2">
-              {isTimerInputOpen ? (
-                <div className="flex gap-2 items-center animate-in fade-in slide-in-from-top-2">
-                  <div className="flex-1 flex items-center bg-zinc-800 rounded-lg px-2 border border-zinc-700 focus-within:border-primary transition-all">
-                    <input 
-                      type="number"
-                      autoFocus
-                      className="w-full bg-transparent py-2 text-2xl font-black font-mono text-primary outline-none"
-                      value={customTimerMinutes}
-                      onChange={e => setCustomTimerMinutes(e.target.value)}
-                    />
-                    <span className="text-[8px] font-black text-zinc-500 uppercase ml-1">MIN</span>
-                  </div>
-                  <Button size="sm" className="bg-primary text-black font-black text-[10px] h-10 px-4" onClick={() => updateTimer(parseInt(customTimerMinutes))}>START</Button>
-                  <Button variant="ghost" size="sm" className="text-zinc-500 h-10 w-10" onClick={() => setIsTimerInputOpen(false)}><X className="h-4 w-4" /></Button>
-                </div>
-              ) : timeLeft ? (
-                <div className="flex items-center justify-between group h-12">
-                  <div className="text-5xl font-black tracking-tighter text-primary italic leading-none font-mono">
+              {timeLeft ? (
+                <div className="flex items-center justify-between group h-24">
+                  <div className="text-6xl font-black tracking-tighter text-primary italic leading-none font-mono">
                     {timeLeft}
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-zinc-500 hover:text-rose-500 hover:bg-zinc-800" onClick={() => updateTimer(null)}>
-                      <Square className="h-5 w-5 fill-current" />
+                    <Button variant="ghost" size="sm" className="h-12 w-12 p-0 text-zinc-500 hover:text-rose-500 hover:bg-zinc-800 rounded-xl" onClick={() => updateTimer(null)}>
+                      <Square className="h-6 w-6 fill-current" />
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="text-2xl font-black tracking-tighter text-zinc-700 uppercase italic leading-tight h-12 flex items-center">
-                  Standby
+                <div className="space-y-4 py-2">
+                  <div className="flex items-center justify-center gap-6">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-10 w-10 p-0 rounded-full border-2 border-zinc-800 text-zinc-400 hover:text-primary hover:border-primary transition-all"
+                      onClick={() => setTimerSetupValue(Math.max(1, timerSetupValue - 5))}
+                    >
+                      <Minus className="h-5 w-5" />
+                    </Button>
+                    <div className="flex flex-col items-center">
+                      <span className="text-5xl font-black font-mono text-white italic leading-none">{timerSetupValue}</span>
+                      <span className="text-[8px] font-black text-zinc-500 uppercase mt-1">Minutes</span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-10 w-10 p-0 rounded-full border-2 border-zinc-800 text-zinc-400 hover:text-primary hover:border-primary transition-all"
+                      onClick={() => setTimerSetupValue(timerSetupValue + 5)}
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  <Button 
+                    className="w-full bg-primary text-black font-black uppercase tracking-[0.2em] text-[10px] h-10 shadow-[0_4px_10px_rgba(255,190,0,0.2)] hover:shadow-[0_4px_15px_rgba(255,190,0,0.4)] transition-all"
+                    onClick={() => updateTimer(timerSetupValue)}
+                  >
+                    Deploy Mission
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -264,7 +269,7 @@ function Dashboard() {
                   <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${selectedProjectId === project.id ? 'bg-primary text-zinc-900' : 'bg-muted text-muted-foreground'}`}>
                     {project.name}
                   </span>
-                  <Badge variant="outline" className={`text-[10px] font-black border-2 ${selectedProjectId === project.id ? 'border-primary/30 text-foreground' : 'border-border text-muted-foreground'}`}>
+                  <Badge variant="outline" className={`text-[10px] font-black border-2 ${selectedProjectId === project.id ? 'border-primary/30 text-zinc-900' : 'border-border text-muted-foreground'}`}>
                     {project.active_count} ACT
                   </Badge>
                 </div>
@@ -407,8 +412,7 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 bg-card">
-            <Table>
-              <TableBody>
+            <TableBody>
                 {data.history.map((quest: any) => (
                   <TableRow key={quest.id} className="hover:bg-muted border-border group/row last:border-0">
                     <TableCell className="py-4 px-6 line-through text-muted-foreground italic font-bold text-sm tracking-tight opacity-50">{quest.title}</TableCell>
@@ -424,8 +428,7 @@ function Dashboard() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
+            </TableBody>
           </CardContent>
         </Card>
       )}
