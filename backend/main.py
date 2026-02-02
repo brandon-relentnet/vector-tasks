@@ -12,7 +12,7 @@ import json
 
 # Database Connection
 DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
-REDIS_URL = "redis://default:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:38272"
+REDIS_URL = "redis://default:oH3tBNUDRZwiBGJfhWEiHHseSufjBlD2RIwGeqeGY01Jj469KH0L0Lc94Izta91m@5.161.88.222:38272/0"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -148,7 +148,6 @@ async def disconnect(sid):
 
 # Helper to notify dashboard of changes
 async def notify_dashboard():
-    # Cache invalidation for key data could happen here in Redis if needed
     await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
 
 # Dependency
@@ -161,7 +160,6 @@ def get_db():
 
 @app.get("/projects", response_model=List[ProjectOut])
 def get_projects(db: Session = Depends(get_db)):
-    # Try Redis first
     cached = r.get("projects")
     if cached:
         return json.loads(cached)
@@ -194,7 +192,7 @@ async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
-    r.delete("projects") # Invalidate projects count cache
+    r.delete("projects")
     await notify_dashboard()
     return TaskOut.from_orm(db_task)
 
@@ -227,7 +225,6 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
 
 @app.get("/daily-log", response_model=Optional[DailyLogOut])
 def get_daily_log(db: Session = Depends(get_db)):
-    # Try Redis for today's log
     today_date = datetime.now(UTC).date()
     today_str = today_date.isoformat()
     cached = r.get(f"log:{today_str}")
@@ -236,7 +233,6 @@ def get_daily_log(db: Session = Depends(get_db)):
 
     log = db.query(DailyLog).filter(DailyLog.date == today_date).first()
     if log:
-        # Crucial fix: ensure date and timer_end are handled by Pydantic's model_dump(mode='json')
         log_data = DailyLogOut.model_validate(log).model_dump(mode='json')
         r.setex(f"log:{today_str}", 60, json.dumps(log_data))
     return log
@@ -274,9 +270,6 @@ async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db
     
     db.commit()
     db.refresh(db_log)
-    
-    # Invalidate cache
     r.delete(f"log:{today.isoformat()}")
-    
     await notify_dashboard()
     return db_log
