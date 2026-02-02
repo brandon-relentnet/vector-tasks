@@ -26,6 +26,9 @@ def get_local_date():
 
 # Database Connection
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://default:oH3tBNUDRZwiBGJfhWEiHHseSufjBlD2RIwGeqeGY01Jj469KH0L0Lc94Izta91m@5.161.88.222:38272/0")
 
 engine = create_engine(DATABASE_URL)
@@ -73,6 +76,9 @@ class DailyLog(Base):
     timer_end = Column(DateTime(timezone=True), nullable=True)
     reflections = Column(Text)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+# Create tables if they don't exist
+Base.metadata.create_all(bind=engine)
 
 # Schemas
 class TaskBase(BaseModel):
