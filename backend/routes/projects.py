@@ -62,10 +62,16 @@ def get_projects(
 
     result = []
     for p in projects:
-        out = ProjectOut.model_validate(p)
-        out.parent_name = get_parent_name(p, db)
-        out.path = build_project_path(p, db)
-        result.append(out.model_dump())
+        data = {
+            'id': p.id,
+            'name': p.name,
+            'description': p.description,
+            'category': p.category,
+            'parent_id': p.parent_id,
+            'parent_name': get_parent_name(p, db),
+            'path': build_project_path(p, db),
+        }
+        result.append(data)
 
     cache_service.set_projects(result)
     return result
@@ -85,10 +91,16 @@ def get_project_tree(db: Session = Depends(get_db)):
 
     result = []
     for p in projects:
-        out = ProjectOut.model_validate(p)
-        out.parent_name = get_parent_name(p, db)
-        out.path = build_project_path(p, db)
-        result.append(out)
+        data = {
+            'id': p.id,
+            'name': p.name,
+            'description': p.description,
+            'category': p.category,
+            'parent_id': p.parent_id,
+            'parent_name': get_parent_name(p, db),
+            'path': build_project_path(p, db),
+        }
+        result.append(data)
 
     return result
 
@@ -110,10 +122,15 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    out = ProjectOut.model_validate(project)
-    out.parent_name = get_parent_name(project, db)
-    out.path = build_project_path(project, db)
-    return out
+    return {
+        'id': project.id,
+        'name': project.name,
+        'description': project.description,
+        'category': project.category,
+        'parent_id': project.parent_id,
+        'parent_name': get_parent_name(project, db),
+        'path': build_project_path(project, db),
+    }
 
 @router.post(
     "",
@@ -147,14 +164,20 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_project)
 
-    out = ProjectOut.model_validate(new_project)
-    out.parent_name = get_parent_name(new_project, db)
-    out.path = build_project_path(new_project, db)
+    result = {
+        'id': new_project.id,
+        'name': new_project.name,
+        'description': new_project.description,
+        'category': new_project.category,
+        'parent_id': new_project.parent_id,
+        'parent_name': get_parent_name(new_project, db),
+        'path': build_project_path(new_project, db),
+    }
 
     cache_service.invalidate_projects()
     notify_dashboard()
 
-    return out
+    return result
 
 @router.patch(
     "/{project_id}",
@@ -198,14 +221,20 @@ async def update_project(
     db.commit()
     db.refresh(project)
 
-    out = ProjectOut.model_validate(project)
-    out.parent_name = get_parent_name(project, db)
-    out.path = build_project_path(project, db)
+    result = {
+        'id': project.id,
+        'name': project.name,
+        'description': project.description,
+        'category': project.category,
+        'parent_id': project.parent_id,
+        'parent_name': get_parent_name(project, db),
+        'path': build_project_path(project, db),
+    }
 
     cache_service.invalidate_projects()
     notify_dashboard()
 
-    return out
+    return result
 
 @router.delete(
     "/{project_id}",
