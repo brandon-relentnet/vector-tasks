@@ -10,8 +10,6 @@ import {
   Target,
   Sun,
   Moon,
-  Clock,
-  Hourglass,
 } from 'lucide-react'
 
 export default function Header() {
@@ -25,9 +23,6 @@ export default function Header() {
   })
   
   const [xp, setXp] = useState(0)
-  const [timeLeft, setTimeLeft] = useState<string | null>(null)
-  const [timerEnd, setTimerEnd] = useState<number | null>(null)
-  const [timerActive, setTimerActive] = useState(false)
 
   // Fetch Data (Poll every 5s + Socket)
   useEffect(() => {
@@ -35,15 +30,6 @@ export default function Header() {
       try {
         const data = await getDashboardData()
         setXp(data.xp)
-        
-        if (data.dailyLog?.timer_end) {
-          setTimerEnd(new Date(data.dailyLog.timer_end).getTime())
-          setTimerActive(true)
-        } else {
-          setTimerEnd(null)
-          setTimerActive(false)
-          setTimeLeft(null)
-        }
       } catch (e) { console.error(e) }
     }
 
@@ -61,27 +47,6 @@ export default function Header() {
       socket.disconnect()
     }
   }, [])
-
-  // Local Ticker (Runs every 1s)
-  useEffect(() => {
-    if (!timerEnd) return
-
-    const tick = () => {
-      const now = Date.now()
-      const distance = timerEnd - now
-      if (distance > 0) {
-        const m = Math.floor((distance % 3600000) / 60000)
-        const s = Math.floor((distance % 60000) / 1000)
-        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
-      } else {
-        setTimeLeft("00:00")
-      }
-    }
-
-    tick() // Immediate update
-    const interval = setInterval(tick, 1000)
-    return () => clearInterval(interval)
-  }, [timerEnd])
 
   useEffect(() => {
     if (isDark) {
@@ -123,17 +88,6 @@ export default function Header() {
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-black italic text-white">{xp}</span>
               <span className="text-[10px] font-black text-primary">XP</span>
-            </div>
-          </div>
-
-          {/* Global Timer Display */}
-          <div className="flex items-center gap-3 bg-zinc-900 px-4 py-1.5 rounded-xl border border-zinc-800 shadow-inner min-w-[120px]">
-            {timerActive ? <Hourglass size={14} className="text-primary animate-pulse" /> : <Clock size={14} className="text-zinc-500" />}
-            <div className="flex flex-col">
-              <span className="text-[7px] font-black uppercase tracking-widest text-zinc-500 leading-none">Clock</span>
-              <span className={`text-sm font-black font-mono leading-none mt-0.5 ${timerActive ? 'text-primary italic' : 'text-zinc-600'}`}>
-                {timeLeft || 'STANDBY'}
-              </span>
             </div>
           </div>
         </div>
