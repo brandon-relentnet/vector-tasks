@@ -28,7 +28,12 @@ function BriefingsPage() {
   }
 
   const toggleFilter = (type: 'morning' | 'night') => {
-    const newFilters = { ...filter, [type]: !filter[type] }
+    // If clicking a filter that's already active, turn it off.
+    // If clicking a different one, switch to it (exclusive).
+    const newFilters = {
+      morning: type === 'morning' ? !filter.morning : false,
+      night: type === 'night' ? !filter.night : false
+    }
     setFilter(newFilters)
     setPage(0)
     fetchHistory(0, newFilters)
