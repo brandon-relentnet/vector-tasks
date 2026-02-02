@@ -120,6 +120,21 @@ function Dashboard() {
     }
   }, [router])
 
+  // Sort projects hierarchically (top-level first, then sub-sectors under parents)
+  const sortedProjects = (() => {
+    const topLevel = data.projects.filter((p: any) => !p.parent_id)
+    const withSubs = [...topLevel].sort((a, b) => a.name.localeCompare(b.name))
+
+    for (const parent of withSubs) {
+      const subs = data.projects
+        .filter((p: any) => p.parent_id === parent.id)
+        .sort((a, b) => a.name.localeCompare(b.name))
+      withSubs.push(...subs)
+    }
+
+    return withSubs
+  })()
+
   // OBJECTIVE LOGIC
   // Big Win is always the primary focus for the current day.
   // Targeted Objectives (goals_for_tomorrow) are the "slides" in the carousel.
@@ -411,7 +426,7 @@ function Dashboard() {
               </Badge>
             </button>
             <div className="opacity-50 mx-2 my-2 bg-border h-px" />
-            {data.projects.map((project: any) => {
+            {sortedProjects.map((project: any) => {
               const indent = project.parent_id ? 'pl-6' : ''
               const parentName = project.parent_name ? (
                 <span className="block font-mono text-[8px] opacity-50 tracking-wider">
@@ -425,8 +440,19 @@ function Dashboard() {
                     onClick={() => setSelectedProjectId(project.id)}
                     className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex flex-col gap-0.5 ${selectedProjectId === project.id ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black border border-zinc-800' : 'hover:bg-muted text-muted-foreground'}`}
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <span>{project.name}</span>
+                    <div className="flex items-center gap-2 w-full">
+                      {/* Delete button on hover - positioned left of count */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteSector(project.id)
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-rose-500 transition-all p-1"
+                        title="Delete Sector"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <span className="flex-1">{project.name}</span>
                       <Badge
                         variant="outline"
                         className={`text-[10px] border-current opacity-50`}
@@ -435,17 +461,6 @@ function Dashboard() {
                       </Badge>
                     </div>
                     {parentName}
-                  </button>
-                  {/* Delete button on hover */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteSector(project.id)
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-rose-500 transition-all p-1"
-                    title="Delete Sector"
-                  >
-                    <Trash2 size={14} />
                   </button>
                 </div>
               )
