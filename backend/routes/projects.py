@@ -139,7 +139,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     summary="Create new project",
     description="Create a new project (sector) for organizing tasks. Can be a top-level sector or sub-sector."
 )
-def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
+async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     """
     Create a new project.
 
