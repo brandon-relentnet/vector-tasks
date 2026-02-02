@@ -20,11 +20,14 @@ Base = declarative_base()
 class Project(Base):
     __tablename__ = "projects"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)  # Removed unique for sub-projects
     description = Column(Text)
     category = Column(String)
+    parent_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     tasks = relationship("Task", back_populates="project")
+    # Self-referential relationship for hierarchy
+    parent = relationship("Project", remote_side=[id], backref="children")
 
 class Briefing(Base):
     __tablename__ = "briefings"

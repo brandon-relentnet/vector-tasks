@@ -57,17 +57,32 @@ class ProjectOut(BaseModel):
     name: str
     description: Optional[str]
     category: Optional[str]
+    parent_id: Optional[int] = None
+    parent_name: Optional[str] = None
+    path: str = ""  # Full path like "Personal > Groceries"
     model_config = ConfigDict(from_attributes=True)
 
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
     category: Optional[str] = "General"
+    parent_id: Optional[int] = None  # None = top-level sector
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
+    parent_id: Optional[int] = None  # Move to different parent
+
+# For frontend breadcrumb display
+class ProjectTreeItem(BaseModel):
+    id: int
+    name: str
+    parent_id: Optional[int]
+    children: List["ProjectTreeItem"] = []
+    model_config = ConfigDict(from_attributes=True)
+
+ProjectTreeItem.model_rebuild()
 
 # Daily Log Schemas
 class DailyLogOut(BaseModel):

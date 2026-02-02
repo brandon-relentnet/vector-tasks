@@ -3,6 +3,7 @@ Project Management API
 
 Endpoints for managing projects (sectors) in the Vector Tasks system.
 Projects organize tasks into logical groups like 'Personal', 'Work', etc.
+Supports hierarchical sub-sectors (e.g., Personal > Groceries).
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -14,6 +15,22 @@ from database import get_db, cache_service, notify_dashboard
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
+def build_project_path(project: Project, db: Session) -> str:
+    """Build full path like 'Personal > Groceries'"""
+    if not project.parent_id:
+        return project.name
+    parent = db.query(Project).filter(Project.id == project.parent_id).first()
+    if parent:
+        return f"{build_project_path(parent, db)} > {project.name}"
+    return project.name
+
+def get_parent_name(project: Project, db: Session) -> Optional[str]:
+    """Get parent name for display"""
+    if not project.parent_id:
+        return None
+    parent = db.query(Project).filter(Project.id == project.parent_id).first()
+    return parent.name if parent else None
+
 @router.get(
     "",
     response_model=List[ProjectOut],
@@ -21,24 +38,58 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
     description="Retrieve all projects with optional pagination. Results are cached for 5 minutes."
 )
 def get_projects(
+    parent_id: Optional[int] = Query(None, description="Filter by parent ID (null = top-level)"),
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db)
 ):
     """
     Get all projects with pagination support.
 
-    - **limit**: Maximum number of results to return (1-100, default 50)
-    - **offset**: Number of results to skip for pagination
+    - **parent_id**: Filter to only show projects under a specific parent
+    - **limit**: Maximum number of results (1-100, default 50)
+    - **offset**: Skip results for pagination
     """
     cached = cache_service.get_projects()
     if cached:
-        start = pagination.offset
-        end = start + pagination.limit
-        return cached[start:end]
+        if parent_id is not None:
+            cached = [p for p in cached if p.get('parent_id') == parent_id]
+        return cached[pagination.offset:pagination.offset + pagination.limit]
 
-    projects = db.query(Project).all()
-    result = [ProjectOut.model_validate(p).model_dump() for p in projects]
+    query = db.query(Project)
+    if parent_id is not None:
+        query = query.filter(Project.parent_id == parent_id)
+    projects = query.order_by(Project.name).all()
+
+    result = []
+    for p in projects:
+        out = ProjectOut.model_validate(p)
+        out.parent_name = get_parent_name(p, db)
+        out.path = build_project_path(p, db)
+        result.append(out.model_dump())
+
     cache_service.set_projects(result)
+    return result
+
+@router.get(
+    "/tree",
+    response_model=List[ProjectOut],
+    summary="Get project hierarchy tree",
+    description="Get all projects with their children for tree/breadcrumb display."
+)
+def get_project_tree(db: Session = Depends(get_db)):
+    """
+    Get all projects in a flat list with parent/child info for building UI trees.
+    Each project includes its full path (e.g., 'Personal > Groceries').
+    """
+    projects = db.query(Project).order_by(Project.name).all()
+
+    result = []
+    for p in projects:
+        out = ProjectOut.model_validate(p)
+        out.parent_name = get_parent_name(p, db)
+        out.path = build_project_path(p, db)
+        result.append(out)
+
     return result
 
 @router.get(
@@ -58,44 +109,58 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project
+
+    out = ProjectOut.model_validate(project)
+    out.parent_name = get_parent_name(project, db)
+    out.path = build_project_path(project, db)
+    return out
 
 @router.post(
     "",
     response_model=ProjectOut,
     status_code=201,
     summary="Create new project",
-    description="Create a new project (sector) for organizing tasks."
+    description="Create a new project (sector) for organizing tasks. Can be a top-level sector or sub-sector."
 )
 def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     """
     Create a new project.
 
-    - **name**: Unique name for the project (required)
-    - **description**: Optional description of the project
+    - **name**: Name for the project (required)
+    - **description**: Optional description
     - **category**: Category label (defaults to 'General')
+    - **parent_id**: Parent project ID (null/empty = top-level sector)
 
-    Returns 409 if a project with the same name already exists.
+    Examples:
+    - Top-level: {"name": "Personal"}
+    - Sub-sector: {"name": "Groceries", "parent_id": 1} (under Personal)
+
+    Returns 404 if parent_id is invalid.
     """
-    db_project = db.query(Project).filter(Project.name == project.name).first()
-    if db_project:
-        raise HTTPException(status_code=409, detail="Project already exists")
+    if project.parent_id:
+        parent = db.query(Project).filter(Project.id == project.parent_id).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent project not found")
 
     new_project = Project(**project.model_dump())
     db.add(new_project)
     db.commit()
     db.refresh(new_project)
 
+    out = ProjectOut.model_validate(new_project)
+    out.parent_name = get_parent_name(new_project, db)
+    out.path = build_project_path(new_project, db)
+
     cache_service.invalidate_projects()
     notify_dashboard()
 
-    return new_project
+    return out
 
 @router.patch(
     "/{project_id}",
     response_model=ProjectOut,
     summary="Update project",
-    description="Update an existing project's properties. Only provided fields are updated."
+    description="Update an existing project's properties. Can also move a project to a different parent."
 )
 async def update_project(
     project_id: int,
@@ -109,12 +174,22 @@ async def update_project(
     - **name**: New name (optional)
     - **description**: New description (optional)
     - **category**: New category (optional)
+    - **parent_id**: Move to different parent (optional)
 
-    Returns 404 if project is not found.
+    Returns 404 if project or parent is not found.
+    Prevents circular references (project can't be its own ancestor).
     """
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Check parent exists if provided
+    if project_update.parent_id is not None:
+        if project_update.parent_id == project_id:
+            raise HTTPException(status_code=400, detail="Project cannot be its own parent")
+        parent = db.query(Project).filter(Project.id == project_update.parent_id).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent project not found")
 
     update_data = project_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -123,16 +198,20 @@ async def update_project(
     db.commit()
     db.refresh(project)
 
+    out = ProjectOut.model_validate(project)
+    out.parent_name = get_parent_name(project, db)
+    out.path = build_project_path(project, db)
+
     cache_service.invalidate_projects()
     notify_dashboard()
 
-    return project
+    return out
 
 @router.delete(
     "/{project_id}",
     status_code=200,
     summary="Delete project",
-    description="Permanently delete a project and all its associated tasks."
+    description="Permanently delete a project and all its sub-projects and tasks."
 )
 async def delete_project(project_id: int, db: Session = Depends(get_db)):
     """
@@ -140,11 +219,21 @@ async def delete_project(project_id: int, db: Session = Depends(get_db)):
 
     - **project_id**: The project to delete
 
+    Warning: This will also delete all sub-projects and their tasks.
     Returns 404 if project is not found.
     """
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Delete all children first (cascade)
+    children = db.query(Project).filter(Project.parent_id == project_id).all()
+    for child in children:
+        # Recursively delete grandchildren
+        grandkids = db.query(Project).filter(Project.parent_id == child.id).all()
+        for grandkid in grandkids:
+            db.delete(grandkid)
+        db.delete(child)
 
     db.delete(project)
     db.commit()
@@ -152,4 +241,4 @@ async def delete_project(project_id: int, db: Session = Depends(get_db)):
     cache_service.invalidate_projects()
     notify_dashboard()
 
-    return {"message": "Project deleted"}
+    return {"message": "Project and all sub-projects deleted"}

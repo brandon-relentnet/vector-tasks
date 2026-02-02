@@ -364,21 +364,32 @@ function Dashboard() {
               </Badge>
             </button>
             <div className="opacity-50 mx-2 my-2 bg-border h-px" />
-            {data.projects.map((project: any) => (
-              <button
-                key={project.id}
-                onClick={() => setSelectedProjectId(project.id)}
-                className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex items-center justify-between group ${selectedProjectId === project.id ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black border border-zinc-800' : 'hover:bg-muted text-muted-foreground'}`}
-              >
-                {project.name}
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] border-current opacity-50`}
+            {data.projects.map((project: any) => {
+              const indent = project.parent_id ? 'pl-6' : ''
+              const parentName = project.parent_name ? (
+                <span className="block font-mono text-[8px] opacity-50 tracking-wider">
+                  {project.parent_name}
+                </span>
+              ) : null
+              return (
+                <button
+                  key={project.id}
+                  onClick={() => setSelectedProjectId(project.id)}
+                  className={`w-full text-left p-4 rounded-xl transition-all font-black uppercase italic tracking-tighter text-sm flex flex-col gap-0.5 group ${selectedProjectId === project.id ? 'bg-zinc-900 text-primary shadow-xl scale-[1.02] dark:bg-primary dark:text-black border border-zinc-800' : 'hover:bg-muted text-muted-foreground'} ${indent}`}
                 >
-                  {project.active_count}
-                </Badge>
-              </button>
-            ))}
+                  <div className="flex items-center justify-between w-full">
+                    <span>{project.name}</span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] border-current opacity-50`}
+                    >
+                      {project.active_count}
+                    </Badge>
+                  </div>
+                  {parentName}
+                </button>
+              )
+            })}
           </div>
 
           <div className="bg-muted/20 mt-auto p-6 border-border border-t">
@@ -607,10 +618,12 @@ function Dashboard() {
                               <p className="font-bold text-foreground group-hover:text-primary text-lg tracking-tight transition-colors">
                                 {quest.title}
                               </p>
-                              {/* Breadcrumb-style sector indicator */}
+                              {/* Breadcrumb-style sector indicator with full path */}
                               <div className="flex items-center gap-1 mt-0.5 opacity-40 group-hover:opacity-70 transition-opacity">
                                 <span className="font-mono text-[8px] text-zinc-500 uppercase tracking-wider">
-                                  {data.projects.find((p: any) => p.id === quest.project_id)?.name || 'Unknown'}
+                                  {data.projects.find((p: any) => p.id === quest.project_id)?.path ||
+                                   data.projects.find((p: any) => p.id === quest.project_id)?.name ||
+                                   'Unknown'}
                                 </span>
                               </div>
                             </div>
@@ -734,7 +747,9 @@ function Dashboard() {
                           {quest.title}
                         </span>
                         <span className="font-mono text-[8px] text-zinc-500 uppercase tracking-wider mt-0.5">
-                          {data.projects.find((p: any) => p.id === quest.project_id)?.name || 'Unknown'}
+                          {data.projects.find((p: any) => p.id === quest.project_id)?.path ||
+                           data.projects.find((p: any) => p.id === quest.project_id)?.name ||
+                           'Unknown'}
                         </span>
                       </div>
                       <div className="flex gap-3 opacity-0 group-hover:opacity-100 text-foreground transition-all translate-x-4 group-hover:translate-x-0 transform">
