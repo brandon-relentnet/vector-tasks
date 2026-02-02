@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 
@@ -38,7 +38,7 @@ function Dashboard() {
     
     socket.on('update', () => {
       console.log('Real-time update received')
-      router.invalidate() // Triggers the loader to fetch fresh data
+      router.invalidate() 
     })
 
     return () => {
@@ -49,7 +49,6 @@ function Dashboard() {
   const handleStatusUpdate = async (taskId: number, newStatus: string) => {
     try {
       await updateTaskStatus(taskId, newStatus)
-      // No need for router.invalidate() here if the server emits 'update'
     } catch (error) {
       console.error('Failed to update status:', error)
     }
@@ -82,6 +81,17 @@ function Dashboard() {
     }
   }
 
+  // Determine active briefing based on existence of midday/shutdown
+  const getActiveBriefing = () => {
+    if (!data.dailyLog) return null;
+    if (data.dailyLog.nightly_reflection) return { type: 'night', icon: <Moon className="h-4 w-4" />, title: 'Nightly Reflection', content: data.dailyLog.nightly_reflection };
+    if (data.dailyLog.shutdown_briefing) return { type: 'shutdown', icon: <LogOut className="h-4 w-4" />, title: 'Shutdown Ritual', content: data.dailyLog.shutdown_briefing };
+    if (data.dailyLog.midday_briefing) return { type: 'midday', icon: <Zap className="h-4 w-4" />, title: 'Mid-Day Pivot', content: data.dailyLog.midday_briefing };
+    return { type: 'morning', icon: <Sparkles className="h-4 w-4" />, title: 'Strategic Briefing', content: data.dailyLog.morning_briefing || "Awaiting intelligence briefing..." };
+  }
+
+  const activeBriefing = getActiveBriefing();
+
   return (
     <div className="p-8 space-y-8 max-w-6xl mx-auto">
       <header className="flex justify-between items-end">
@@ -102,38 +112,44 @@ function Dashboard() {
       </header>
 
       {/* Daily Briefing / Nightly Reflection Section */}
-      {data.dailyLog && (
-        <Card className="border-primary/50 bg-primary/5 border-2 overflow-hidden">
+      {activeBriefing && (
+        <Card className={`border-2 overflow-hidden transition-all ${
+          activeBriefing.type === 'night' ? 'border-indigo-400 bg-indigo-50/10' : 
+          activeBriefing.type === 'shutdown' ? 'border-zinc-400 bg-zinc-50' :
+          activeBriefing.type === 'midday' ? 'border-blue-400 bg-blue-50/10' :
+          'border-primary/50 bg-primary/5'
+        }`}>
           <CardContent className="p-0">
             <div className="flex flex-col md:flex-row">
               <div className="p-6 flex-1 space-y-4">
-                <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-sm">
-                  {data.dailyLog.nightly_reflection ? <Moon className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                  {data.dailyLog.nightly_reflection ? "Nightly Reflection" : "Strategic Briefing"}
+                <div className={`flex items-center gap-2 font-bold uppercase tracking-wider text-sm ${
+                  activeBriefing.type === 'night' ? 'text-indigo-600' : 
+                  activeBriefing.type === 'shutdown' ? 'text-zinc-600' :
+                  activeBriefing.type === 'midday' ? 'text-blue-600' :
+                  'text-primary'
+                }`}>
+                  {activeBriefing.icon}
+                  {activeBriefing.title}
                 </div>
                 
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-bold italic">"{data.dailyLog.morning_briefing || "Awaiting intelligence briefing..."}"</h2>
-                  {data.dailyLog.nightly_reflection && (
-                    <p className="text-muted-foreground leading-relaxed">{data.dailyLog.nightly_reflection}</p>
+                  <h2 className="text-2xl font-bold italic">"{activeBriefing.content}"</h2>
+                  {activeBriefing.type === 'morning' && data.dailyLog.starting_nudge && (
+                    <div className="p-4 bg-background/50 rounded-lg border border-primary/20">
+                      <span className="text-xs font-black uppercase text-primary block mb-1">Starting Nudge</span>
+                      <p className="font-medium">{data.dailyLog.starting_nudge}</p>
+                    </div>
                   )}
                 </div>
-
-                {data.dailyLog.starting_nudge && !data.dailyLog.nightly_reflection && (
-                  <div className="p-4 bg-background/50 rounded-lg border border-primary/20">
-                    <span className="text-xs font-black uppercase text-primary block mb-1">Starting Nudge</span>
-                    <p className="font-medium">{data.dailyLog.starting_nudge}</p>
-                  </div>
-                )}
               </div>
               
-              {data.dailyLog.goals_for_tomorrow?.length > 0 && (
-                <div className="bg-primary/10 p-6 md:w-80 border-l border-primary/20">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-3">Targeted Objectives</h3>
+              {data.dailyLog.goals_for_tomorrow?.length > 0 && activeBriefing.type === 'night' && (
+                <div className="bg-indigo-100/20 p-6 md:w-80 border-l border-indigo-100">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-3">Targeted Objectives</h3>
                   <ul className="space-y-3">
                     {data.dailyLog.goals_for_tomorrow.map((goal: string, i: number) => (
                       <li key={i} className="flex gap-2 text-sm font-medium">
-                        <span className="text-primary/50">{i + 1}.</span> {goal}
+                        <span className="text-indigo-300">{i + 1}.</span> {goal}
                       </li>
                     ))}
                   </ul>

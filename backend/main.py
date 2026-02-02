@@ -48,6 +48,8 @@ class DailyLog(Base):
     big_win = Column(Text)
     starting_nudge = Column(Text)
     morning_briefing = Column(Text)
+    midday_briefing = Column(Text)
+    shutdown_briefing = Column(Text)
     nightly_reflection = Column(Text)
     goals_for_tomorrow = Column(JSON, default=[])
     reflections = Column(Text)
@@ -104,6 +106,8 @@ class DailyLogOut(BaseModel):
     big_win: Optional[str] = None
     starting_nudge: Optional[str] = None
     morning_briefing: Optional[str] = None
+    midday_briefing: Optional[str] = None
+    shutdown_briefing: Optional[str] = None
     nightly_reflection: Optional[str] = None
     goals_for_tomorrow: List[str] = []
     reflections: Optional[str] = None
