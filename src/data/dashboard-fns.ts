@@ -78,6 +78,16 @@ export const getDashboardData = async () => {
   }
 };
 
+export const getBriefingHistory = async () => {
+  try {
+    const response = await api.get('/daily-log/history');
+    return response.data;
+  } catch (error) {
+    console.error('History API Error:', error);
+    return [];
+  }
+};
+
 export const updateTaskStatus = async (taskId: number, status: string) => {
   try {
     const response = await api.patch(`/tasks/${taskId}`, { status });

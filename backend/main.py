@@ -207,3 +207,26 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
 def get_daily_log(db: Session = Depends(get_db)):
     today = datetime.now(UTC).date()
     return db.query(DailyLog).filter(DailyLog.date == today).first()
+
+@app.get("/daily-log/history", response_model=List[DailyLogOut])
+def get_daily_log_history(db: Session = Depends(get_db)):
+    return db.query(DailyLog).order_by(DailyLog.date.desc()).all()
+
+@app.post("/daily-log/update", response_model=DailyLogOut)
+async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db)):
+    today = datetime.now(UTC).date()
+    db_log = db.query(DailyLog).filter(DailyLog.date == today).first()
+    
+    if not db_log:
+        db_log = DailyLog(date=today)
+        db.add(db_log)
+    
+    update_data = log_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        if key != 'id' and key != 'date':
+            setattr(db_log, key, value)
+    
+    db.commit()
+    db.refresh(db_log)
+    await notify_dashboard()
+    return db_log
