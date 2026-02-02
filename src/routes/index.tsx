@@ -593,7 +593,7 @@ function Dashboard() {
                         className="group hover:bg-zinc-900/30 border-zinc-800/50 last:border-0 border-b h-20 transition-all"
                       >
                         <TableCell className="py-4 pl-0">
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3">
                             <div
                               className={`h-1.5 w-1.5 rounded-full ${
                                 quest.priority === 'High'
@@ -603,9 +603,17 @@ function Dashboard() {
                                     : 'border border-zinc-600 bg-transparent'
                               }`}
                             />
-                            <p className="font-bold text-foreground group-hover:text-primary text-lg tracking-tight transition-colors">
-                              {quest.title}
-                            </p>
+                            <div className="flex flex-col">
+                              <p className="font-bold text-foreground group-hover:text-primary text-lg tracking-tight transition-colors">
+                                {quest.title}
+                              </p>
+                              {/* Breadcrumb-style sector indicator */}
+                              <div className="flex items-center gap-1 mt-0.5 opacity-40 group-hover:opacity-70 transition-opacity">
+                                <span className="font-mono text-[8px] text-zinc-500 uppercase tracking-wider">
+                                  {data.projects.find((p: any) => p.id === quest.project_id)?.name || 'Unknown'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
@@ -721,9 +729,14 @@ function Dashboard() {
                       key={quest.id}
                       className="group flex justify-between items-center bg-card shadow-sm hover:shadow-md p-5 border-2 border-border rounded-2xl transition-all"
                     >
-                      <span className="font-black text-muted-foreground text-base line-through italic uppercase tracking-tighter">
-                        {quest.title}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-black text-muted-foreground text-base line-through italic uppercase tracking-tighter">
+                          {quest.title}
+                        </span>
+                        <span className="font-mono text-[8px] text-zinc-500 uppercase tracking-wider mt-0.5">
+                          {data.projects.find((p: any) => p.id === quest.project_id)?.name || 'Unknown'}
+                        </span>
+                      </div>
                       <div className="flex gap-3 opacity-0 group-hover:opacity-100 text-foreground transition-all translate-x-4 group-hover:translate-x-0 transform">
                         <Button
                           variant="outline"
