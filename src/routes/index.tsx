@@ -352,162 +352,172 @@ function Dashboard() {
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 max-w-5xl mx-auto w-full">
-            <Card className="border-2 border-border shadow-xl rounded-3xl overflow-hidden bg-card">
-              <CardContent className="p-0">
-                {isAdding && (
-                  <form onSubmit={handleCreateTask} className="p-8 border-b-4 border-primary/20 bg-zinc-900/50 dark:bg-black/40 flex flex-col gap-6 animate-in fade-in slide-in-from-top-6 duration-500 text-foreground relative overflow-hidden group/form">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse" />
-                    
-                    {/* Top Row: Input and Action Buttons */}
-                    <div className="flex flex-col md:flex-row gap-6 items-start md:items-end">
-                      <div className="flex-1 w-full space-y-2 relative">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                          <Target size={12} /> Operational Objective
-                        </label>
-                        <input 
-                          autoFocus 
-                          className="w-full bg-transparent border-b-2 border-zinc-700 focus:border-primary text-3xl font-black uppercase tracking-tighter py-2 outline-none transition-all placeholder:text-zinc-800 placeholder:opacity-50" 
-                          placeholder="ENTER MISSION PARAMETERS..." 
-                          value={newTaskTitle} 
-                          onChange={e => setNewTaskTitle(e.target.value)} 
-                        />
-                      </div>
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full space-y-8">
+            {isAdding && (
+              <form onSubmit={handleCreateTask} className="rounded-3xl border-2 border-primary/20 bg-zinc-900/80 dark:bg-black/60 backdrop-blur-xl p-8 flex flex-col gap-6 animate-in fade-in slide-in-from-top-6 duration-500 text-foreground relative overflow-hidden group/form shadow-2xl">
+                <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse" />
+                
+                {/* Top Row: Input and Action Buttons */}
+                <div className="flex flex-col md:flex-row gap-6 items-start md:items-end">
+                  <div className="flex-1 w-full space-y-2 relative">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                      <Target size={12} /> Operational Objective
+                    </label>
+                    <input 
+                      autoFocus 
+                      className="w-full bg-transparent border-b-2 border-zinc-700 focus:border-primary text-3xl font-black uppercase tracking-tighter py-2 outline-none transition-all placeholder:text-zinc-800 placeholder:opacity-50" 
+                      placeholder="ENTER MISSION PARAMETERS..." 
+                      value={newTaskTitle} 
+                      onChange={e => setNewTaskTitle(e.target.value)} 
+                    />
+                  </div>
 
-                      <div className="flex gap-2 w-full md:w-auto shrink-0">
-                        <Button 
-                          type="submit" 
-                          disabled={isSubmitting}
-                          className={`flex-1 md:flex-none h-14 min-w-[140px] font-black uppercase tracking-widest text-[10px] rounded-xl shadow-xl transition-all active:scale-95 ${isSubmitting ? 'bg-zinc-800 text-zinc-500 cursor-wait' : 'bg-primary text-black hover:shadow-primary/20 hover:shadow-2xl'}`}
+                  <div className="flex gap-2 w-full md:w-auto shrink-0">
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                      className={`flex-1 md:flex-none h-14 min-w-[140px] font-black uppercase tracking-widest text-[10px] rounded-xl shadow-xl transition-all active:scale-95 ${isSubmitting ? 'bg-zinc-800 text-zinc-500 cursor-wait' : 'bg-primary text-black hover:shadow-primary/20 hover:shadow-2xl'}`}
+                    >
+                      {isSubmitting ? (
+                        <span className="animate-pulse">Deploying...</span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>Initialize</span> <ChevronRight size={12} strokeWidth={4} />
+                        </div>
+                      )}
+                    </Button>
+                    <Button type="button" variant="ghost" className="h-14 w-14 rounded-xl text-zinc-600 hover:bg-rose-950/30 hover:text-rose-500 hover:border-rose-900 border border-transparent transition-all" onClick={() => setIsAdding(false)}>
+                      <X size={20} />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Controls */}
+                <div className="flex flex-wrap items-center gap-6 pt-2">
+                  {/* Priority Toggle */}
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Threat Level</span>
+                    <div className="flex bg-zinc-950/50 p-1 rounded-lg border border-zinc-800">
+                      {['Low', 'Med', 'High'].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setNewPriority(p)}
+                          className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
+                            newPriority === p 
+                              ? p === 'High' ? 'bg-rose-500 text-white shadow-lg shadow-rose-900/20' 
+                              : p === 'Med' ? 'bg-primary text-black shadow-lg shadow-primary/20' 
+                              : 'bg-zinc-700 text-white'
+                              : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800'
+                          }`}
                         >
-                          {isSubmitting ? (
-                            <span className="animate-pulse">Deploying...</span>
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Project Selector */}
+                  <div className="space-y-1.5 flex-1 min-w-[200px]">
+                    <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Assigned Sector</span>
+                    <Select
+                      value={newProjectId}
+                      onChange={(val) => setNewProjectId(Number(val))}
+                      options={data.projects.map((p: any) => ({ value: p.id, label: p.name }))}
+                      placeholder="Select Sector..."
+                    />
+                  </div>
+                  
+                  <div className="hidden md:block ml-auto opacity-30">
+                     <span className="text-[9px] font-mono text-zinc-500">ID: {Math.floor(Math.random() * 9999)}</span>
+                  </div>
+                </div>
+              </form>
+            )}
+
+            <div className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-zinc-800/50">
+                    <TableHead className="py-4 pl-0 text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500">Mission Parameters</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500 w-32 text-center">Threat</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500 text-center w-32">Status</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500 text-center w-40">Command</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredQuests.length > 0 ? filteredQuests.map((quest: any) => (
+                    <TableRow key={quest.id} className="group hover:bg-zinc-900/30 transition-all border-b border-zinc-800/50 last:border-0 h-20">
+                      <TableCell className="pl-0 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className={`h-1.5 w-1.5 rounded-full ${quest.priority === 'High' ? 'bg-rose-500' : 'bg-primary'}`} />
+                          <p className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">{quest.title}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={`inline-flex font-black text-[9px] uppercase tracking-widest px-2 py-1 rounded border ${
+                          quest.priority === 'High' 
+                            ? 'border-rose-900/50 text-rose-500 bg-rose-950/10' 
+                            : quest.priority === 'Low'
+                            ? 'border-zinc-800 text-zinc-500'
+                            : 'border-primary/20 text-primary bg-primary/5'
+                        }`}>
+                          {quest.priority}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2 font-bold text-[9px] uppercase tracking-widest text-zinc-500">
+                          {quest.status === 'Working' ? (
+                            <span className="text-primary animate-pulse">In Progress</span>
                           ) : (
+                            <span>Pending</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center scale-95 group-hover:scale-100 transition-all opacity-60 group-hover:opacity-100">
+                          {quest.status === 'Todo' && (
+                            <Button variant="outline" size="sm" className="h-9 bg-transparent hover:bg-primary hover:text-black border border-zinc-700 hover:border-primary font-black text-[9px] tracking-[0.1em] px-4 rounded-lg transition-all" onClick={() => handleStatusUpdate(quest.id, 'Working')}>
+                              ENGAGE
+                            </Button>
+                          )}
+                          {quest.status === 'Working' && (
                             <div className="flex items-center gap-2">
-                              <span>Initialize</span> <ChevronRight size={12} strokeWidth={4} />
+                              <Button variant="default" size="sm" className="h-9 bg-primary text-black hover:bg-white border border-primary font-black text-[9px] tracking-[0.1em] px-4 rounded-lg transition-all shadow-[0_0_15px_rgba(255,190,0,0.3)]" onClick={() => handleStatusUpdate(quest.id, 'Done')}>
+                                COMPLETE
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
+                                <Pause size={14} />
+                              </Button>
                             </div>
                           )}
-                        </Button>
-                        <Button type="button" variant="ghost" className="h-14 w-14 rounded-xl text-zinc-600 hover:bg-rose-950/30 hover:text-rose-500 hover:border-rose-900 border border-transparent transition-all" onClick={() => setIsAdding(false)}>
-                          <X size={20} />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Bottom Row: Controls */}
-                    <div className="flex flex-wrap items-center gap-6 pt-2">
-                      {/* Priority Toggle */}
-                      <div className="space-y-1.5">
-                        <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Threat Level</span>
-                        <div className="flex bg-zinc-950/50 p-1 rounded-lg border border-zinc-800">
-                          {['Low', 'Med', 'High'].map((p) => (
-                            <button
-                              key={p}
-                              type="button"
-                              onClick={() => setNewPriority(p)}
-                              className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
-                                newPriority === p 
-                                  ? p === 'High' ? 'bg-rose-500 text-white shadow-lg shadow-rose-900/20' 
-                                  : p === 'Med' ? 'bg-primary text-black shadow-lg shadow-primary/20' 
-                                  : 'bg-zinc-700 text-white'
-                                  : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          ))}
                         </div>
-                      </div>
-
-                      {/* Project Selector */}
-                      <div className="space-y-1.5 flex-1 min-w-[200px]">
-                        <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Assigned Sector</span>
-                        <Select
-                          value={newProjectId}
-                          onChange={(val) => setNewProjectId(Number(val))}
-                          options={data.projects.map((p: any) => ({ value: p.id, label: p.name }))}
-                          placeholder="Select Sector..."
-                        />
-                      </div>
-                      
-                      <div className="hidden md:block ml-auto opacity-30">
-                         <span className="text-[9px] font-mono text-zinc-500">ID: {Math.floor(Math.random() * 9999)}</span>
-                      </div>
-                    </div>
-                  </form>
-                )}
-
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow className="hover:bg-transparent border-b-2 border-border">
-                      <TableHead className="py-5 px-8 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Objective</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 w-32">Priority</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 text-center">Status</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 text-center w-40">Protocol</TableHead>
-                      <TableHead className="text-right w-16"></TableHead>
+                      </TableCell>
+                      <TableCell className="text-right pr-0">
+                        <Button variant="ghost" size="sm" className="text-zinc-700 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100" onClick={() => handleDeleteTask(quest.id)}>
+                          <Trash2 size={16} />
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredQuests.length > 0 ? filteredQuests.map((quest: any) => (
-                      <TableRow key={quest.id} className="group hover:bg-muted/30 transition-all border-b border-border last:border-0 h-24">
-                        <TableCell className="py-0 px-8">
-                          <p className="font-black text-xl tracking-tighter text-foreground leading-none group-hover:text-primary transition-colors uppercase italic">{quest.title}</p>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={`font-black italic uppercase text-[10px] px-3 py-1 border-2 ${quest.priority === 'High' ? 'border-zinc-900 bg-zinc-900 dark:bg-zinc-800 text-primary' : 'border-border text-muted-foreground'}`}>
-                            {quest.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-2.5 font-black text-[10px] uppercase tracking-widest text-muted-foreground">
-                            <div className={`h-2.5 w-2.5 rounded-full ${quest.status === 'Working' ? 'bg-primary shadow-[0_0_10px_var(--primary)] animate-pulse' : 'bg-muted-foreground/30'}`} />
-                            {quest.status}
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-24">
+                        <div className="flex flex-col items-center justify-center gap-4 text-zinc-700 opacity-50">
+                          <div className="h-12 w-12 rounded-full border border-dashed border-zinc-700 flex items-center justify-center">
+                            <CheckCircle2 size={20} />
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-2 scale-90 group-hover:scale-100 transition-transform">
-                            {quest.status === 'Todo' && (
-                              <Button variant="outline" size="sm" className="h-10 bg-card hover:bg-zinc-900 hover:text-primary dark:hover:bg-primary dark:hover:text-black border-2 border-zinc-900 dark:border-border font-black text-[10px] tracking-[0.1em] px-5 rounded-xl transition-all" onClick={() => handleStatusUpdate(quest.id, 'Working')}>
-                                START
-                              </Button>
-                            )}
-                            {quest.status === 'Working' && (
-                              <>
-                                <Button variant="outline" size="sm" className="h-10 bg-primary hover:bg-zinc-900 hover:text-primary text-zinc-900 border-2 border-primary font-black text-[10px] tracking-[0.1em] px-5 rounded-xl transition-all" onClick={() => handleStatusUpdate(quest.id, 'Done')}>
-                                  FINISH
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
-                                  <Pause size={18} />
-                                </Button>
-                              </>
-                            )}
+                          <div className="text-center">
+                            <p className="font-black uppercase tracking-[0.2em] text-sm">Sector Clear</p>
+                            <p className="text-[9px] font-mono mt-1">NO ACTIVE HOSTILES</p>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right pr-8">
-                          <Button variant="ghost" size="sm" className="text-muted/20 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100" onClick={() => handleDeleteTask(quest.id)}>
-                            <Trash2 size={18} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-32">
-                          <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground opacity-30">
-                            <div className="h-16 w-16 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
-                              <CheckCircle2 size={32} />
-                            </div>
-                            <div className="text-center">
-                              <p className="font-black uppercase tracking-[0.3em] italic text-lg">Sector Clear</p>
-                              <p className="text-[10px] font-bold uppercase tracking-widest mt-1">No Active Hostiles</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
             {data.history && data.history.length > 0 && (
               <div className="mt-16 space-y-6 pb-20">
