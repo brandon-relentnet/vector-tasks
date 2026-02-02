@@ -31,22 +31,27 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
   const [timerSetupValue, setTimerSetupValue] = useState(25)
+  // Optimistic UI state for the timer
+  const [optimisticTimerEnd, setOptimisticTimerEnd] = useState<string | null>(null)
 
   // Timer logic
   useEffect(() => {
-    if (!data.dailyLog?.timer_end) {
+    const activeEnd = optimisticTimerEnd || data.dailyLog?.timer_end;
+    
+    if (!activeEnd) {
       setTimeLeft(null)
       return
     }
 
     const timer = setInterval(() => {
-      const end = new Date(data.dailyLog.timer_end).getTime()
+      const end = new Date(activeEnd).getTime()
       const now = new Date().getTime()
       const distance = end - now
 
       if (distance < 0) {
         clearInterval(timer)
         setTimeLeft("00:00")
+        if (optimisticTimerEnd) setOptimisticTimerEnd(null)
       } else {
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
         const seconds = Math.floor((distance % (1000 * 60)) / 1000)
@@ -55,13 +60,16 @@ function Dashboard() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [data.dailyLog?.timer_end])
+  }, [data.dailyLog?.timer_end, optimisticTimerEnd])
 
   useEffect(() => {
     const socket = io('http://localhost:8000')
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
-    socket.on('update', () => router.invalidate())
+    socket.on('update', () => {
+        setOptimisticTimerEnd(null) // Clear optimistic state when server confirms update
+        router.invalidate()
+    })
     return () => { socket.disconnect() }
   }, [router])
 
@@ -100,8 +108,14 @@ function Dashboard() {
   }
 
   const updateTimer = async (minutes: number | null) => {
+    const timer_end = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
+    
+    // 1. Optimistic Update: Change the UI immediately
+    setOptimisticTimerEnd(timer_end)
+    if (!timer_end) setTimeLeft(null)
+
     try {
-      const timer_end = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
+      // 2. Background Sync: Update the server
       await axios.post('http://localhost:8000/daily-log/update', {
         id: data.dailyLog.id,
         date: data.dailyLog.date,
@@ -109,6 +123,8 @@ function Dashboard() {
       })
     } catch (error) {
       console.error('Failed to update timer:', error)
+      setOptimisticTimerEnd(null) // Revert on failure
+      router.invalidate()
     }
   }
 
@@ -412,7 +428,8 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 bg-card">
-            <TableBody>
+            <Table>
+              <TableBody>
                 {data.history.map((quest: any) => (
                   <TableRow key={quest.id} className="hover:bg-muted border-border group/row last:border-0">
                     <TableCell className="py-4 px-6 line-through text-muted-foreground italic font-bold text-sm tracking-tight opacity-50">{quest.title}</TableCell>
@@ -428,7 +445,8 @@ function Dashboard() {
                     </TableCell>
                   </TableRow>
                 ))}
-            </TableBody>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
