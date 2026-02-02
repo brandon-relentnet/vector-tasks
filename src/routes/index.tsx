@@ -3,6 +3,7 @@ import { getDashboardData, updateTaskStatus, createTask, deleteTask, api } from 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Check, ChevronRight, ChevronLeft, Trophy } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -421,18 +422,12 @@ function Dashboard() {
                       {/* Project Selector */}
                       <div className="space-y-1.5 flex-1 min-w-[200px]">
                         <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Assigned Sector</span>
-                        <div className="relative group/select">
-                          <select 
-                            value={newProjectId || ""} 
-                            onChange={(e) => setNewProjectId(Number(e.target.value))}
-                            className="appearance-none w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg pl-4 pr-10 py-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-300 focus:border-primary focus:text-primary outline-none transition-all cursor-pointer shadow-sm"
-                          >
-                            {data.projects.map((p: any) => (
-                              <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                          </select>
-                          <ChevronRight size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 group-hover/select:text-primary transition-colors rotate-90 pointer-events-none" />
-                        </div>
+                        <Select
+                          value={newProjectId}
+                          onChange={(val) => setNewProjectId(Number(val))}
+                          options={data.projects.map((p: any) => ({ value: p.id, label: p.name }))}
+                          placeholder="Select Sector..."
+                        />
                       </div>
                       
                       <div className="hidden md:block ml-auto opacity-30">
