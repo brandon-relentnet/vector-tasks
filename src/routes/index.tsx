@@ -504,6 +504,23 @@ function Dashboard() {
                       </TableCell>
                     </TableRow>
                   )) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-24">
+                        <div className="flex flex-col items-center justify-center gap-4 text-zinc-700 opacity-50">
+                          <div className="h-12 w-12 rounded-full border border-dashed border-zinc-700 flex items-center justify-center">
+                            <CheckCircle2 size={20} />
+                          </div>
+                          <div className="text-center">
+                            <p className="font-black uppercase tracking-[0.2em] text-sm">Sector Clear</p>
+                            <p className="text-[9px] font-mono mt-1">NO ACTIVE HOSTILES</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
             {data.history && data.history.length > 0 && (
               <div className="mt-16 space-y-6 pb-20">
