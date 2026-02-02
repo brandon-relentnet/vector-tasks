@@ -26,40 +26,12 @@ function Dashboard() {
   const data = Route.useLoaderData()
   const router = useRouter()
   
-  // UI States
   const [isAdding, setIsAdding] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
-  
-  // Timer States
   const [timerSetupValue, setTimerSetupValue] = useState(25)
-  const [timeLeft, setTimeLeft] = useState<string | null>(null)
   const [localTimerEnd, setLocalTimerEnd] = useState<string | null>(null)
-
-  // Timer logic
-  useEffect(() => {
-    const activeEnd = localTimerEnd || data.dailyLog?.timer_end;
-    if (!activeEnd) {
-      setTimeLeft(null)
-      return
-    }
-    const timer = setInterval(() => {
-      const end = new Date(activeEnd).getTime()
-      const now = Date.now()
-      const distance = end - now
-      if (distance < 0) {
-        clearInterval(timer)
-        setTimeLeft("00:00")
-        setLocalTimerEnd(null)
-      } else {
-        const m = Math.floor((distance % 3600000) / 60000)
-        const s = Math.floor((distance % 60000) / 1000)
-        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
-      }
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [data.dailyLog?.timer_end, localTimerEnd])
 
   useEffect(() => {
     const socket = io('http://localhost:8000')
@@ -75,7 +47,6 @@ function Dashboard() {
   const handleTimerAction = async (minutes: number | null) => {
     const newEnd = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
     setLocalTimerEnd(newEnd)
-    if (!newEnd) setTimeLeft(null)
     try {
       await axios.post('http://localhost:8000/daily-log/update', {
         id: data.dailyLog.id,
@@ -129,80 +100,32 @@ function Dashboard() {
 
   return (
     <div className="h-[calc(100vh-65px)] flex flex-col overflow-hidden text-foreground">
-      {/* TOP ROW: Integrated Command Bar */}
+      {/* TOP ROW: Strategic Command Bar */}
       <div className="flex border-b border-border bg-card/80 backdrop-blur-xl h-24 overflow-hidden shadow-sm">
-        {/* Left Section: Active Strategic Orders */}
+        {/* Expanded Strategic Orders */}
         <div className="flex-1 p-6 min-w-0 flex items-center">
           {activeBriefing ? (
-            <div className="flex items-center gap-6 animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="flex items-center gap-6 animate-in fade-in slide-in-from-left-4 duration-500 w-full">
               <div className="bg-muted p-3 rounded-2xl border border-border shadow-inner shrink-0">
                 <span className="text-primary">{activeBriefing.icon}</span>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                  {activeBriefing.title} // Active Orders
+                  {activeBriefing.title} // Intelligence Feed
                 </p>
-                <h2 className="text-2xl font-black italic tracking-tight leading-none text-foreground truncate max-w-2xl">
+                <h2 className="text-2xl font-black italic tracking-tight leading-none text-foreground">
                   "{activeBriefing.content}"
                 </h2>
               </div>
             </div>
           ) : (
             <div className="animate-pulse flex items-center gap-4 text-muted-foreground italic font-medium">
-               Awaiting tactical synchronization...
+               Synchronizing with high-command...
             </div>
           )}
         </div>
-
-        {/* Right Section: Tactical Modules (Timer & XP) */}
-        <div className="flex shrink-0">
-          {/* XP Module */}
-          <div className="px-8 border-l border-border flex flex-col justify-center items-end bg-zinc-50/50 dark:bg-zinc-950/20">
-            <p className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-1">Momentum</p>
-            <div className="flex items-end gap-2">
-              <span className="text-4xl font-black tracking-tighter leading-none">{data.xp}</span>
-              <span className="text-[10px] font-black uppercase text-primary mb-1">XP</span>
-            </div>
-          </div>
-
-          {/* Timer Module */}
-          <div className="w-80 px-8 border-l border-border flex flex-col justify-center bg-zinc-900 dark:bg-zinc-950 text-white relative">
-            <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
-              {isTimerActive ? <Hourglass size={60} className="text-primary animate-pulse" /> : <Clock size={60} className="text-white" />}
-            </div>
-            
-            {isTimerActive ? (
-              <div className="flex items-center justify-between group relative z-10">
-                <div>
-                  <p className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1">Deployment</p>
-                  <div className="text-4xl font-black tracking-tighter text-primary italic leading-none font-mono">
-                    {timeLeft || '--:--'}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-zinc-500 hover:text-rose-500 hover:bg-zinc-800 rounded-xl" onClick={() => handleTimerAction(null)}>
-                  <Square className="h-5 w-5 fill-current" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4 relative z-10">
-                <div className="flex-1 flex items-center justify-between bg-zinc-800/80 rounded-xl p-2 border border-zinc-700/50">
-                  <button onClick={() => setTimerSetupValue(v => Math.max(1, v - 5))} className="text-zinc-500 hover:text-primary transition-colors"><Minus size={18} /></button>
-                  <span className="text-3xl font-black font-mono text-white leading-none">{timerSetupValue}</span>
-                  <button onClick={() => setTimerSetupValue(v => v + 5)} className="text-zinc-500 hover:text-primary transition-colors"><Plus size={18} /></button>
-                </div>
-                <Button 
-                  className="bg-primary text-black font-black uppercase text-[10px] h-12 px-6 rounded-xl shadow-[0_4px_15px_rgba(255,190,0,0.15)] hover:shadow-[0_4px_20px_rgba(255,190,0,0.3)] transition-all"
-                  onClick={() => handleTimerAction(timerSetupValue)}
-                >
-                  Launch
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
-      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex overflow-hidden bg-background">
         {/* Project Navigation Sidebar */}
         <div className="w-64 border-r border-border bg-card flex flex-col shadow-[1px_0_10px_rgba(0,0,0,0.02)]">
@@ -235,12 +158,46 @@ function Dashboard() {
               </button>
             ))}
           </div>
+
+          {/* New Timer Control Sidebar Module */}
+          {!isTimerActive && (
+            <div className="p-4 mx-4 mb-4 bg-zinc-900 dark:bg-zinc-950 rounded-2xl border border-zinc-800 shadow-xl space-y-4 animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Deploy Timer</span>
+                <Clock size={12} className="text-zinc-500" />
+              </div>
+              <div className="flex items-center justify-between bg-zinc-800 rounded-xl p-1.5 border border-zinc-700">
+                <button onClick={() => setTimerSetupValue(v => Math.max(1, v - 5))} className="text-zinc-500 hover:text-primary transition-colors p-1"><Minus size={14} /></button>
+                <span className="text-xl font-black font-mono text-white">{timerSetupValue}</span>
+                <button onClick={() => setTimerSetupValue(v => v + 5)} className="text-zinc-500 hover:text-primary transition-colors p-1"><Plus size={14} /></button>
+              </div>
+              <Button 
+                className="w-full bg-primary text-black font-black uppercase text-[10px] h-9 rounded-xl shadow-lg transition-all"
+                onClick={() => handleTimerAction(timerSetupValue)}
+              >
+                Launch
+              </Button>
+            </div>
+          )}
+          
+          {isTimerActive && (
+            <div className="p-4 mx-4 mb-4 bg-primary rounded-2xl shadow-[0_0_20px_rgba(255,190,0,0.2)] flex items-center justify-between group animate-in zoom-in-95">
+              <div className="flex items-center gap-3">
+                <Hourglass size={16} className="text-black animate-pulse" />
+                <span className="text-[10px] font-black uppercase text-black tracking-widest">Active</span>
+              </div>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-black hover:bg-black/10" onClick={() => handleTimerAction(null)}>
+                <Square className="h-4 w-4 fill-current" />
+              </Button>
+            </div>
+          )}
+
           <div className="p-6 bg-muted/20 border-t border-border mt-auto">
              <div className="flex items-center gap-2 text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
                <Wifi size={10} className={isConnected ? 'text-primary' : 'text-rose-500'} /> 
-               Status: {isConnected ? 'Synchronized' : 'Standalone'}
+               Comms: {isConnected ? 'Stable' : 'Offline'}
              </div>
-             <div className="text-[8px] font-bold text-zinc-300 uppercase tracking-widest">Vector Command Core v1.2</div>
+             <div className="text-[8px] font-bold text-zinc-300 uppercase tracking-widest">Vector Core v1.2</div>
           </div>
         </div>
 

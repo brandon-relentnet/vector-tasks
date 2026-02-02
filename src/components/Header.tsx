@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { getDashboardData } from '../data/dashboard-fns'
 import {
   Home,
   Menu,
@@ -8,6 +9,8 @@ import {
   Target,
   Sun,
   Moon,
+  Clock,
+  Hourglass,
 } from 'lucide-react'
 
 export default function Header() {
@@ -19,6 +22,41 @@ export default function Header() {
     }
     return false
   })
+  
+  const [xp, setXp] = useState(0)
+  const [timeLeft, setTimeLeft] = useState<string | null>(null)
+  const [timerActive, setTimerActive] = useState(false)
+
+  // Sync Global Stats (XP and Timer)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getDashboardData()
+        setXp(data.xp)
+        
+        if (data.dailyLog?.timer_end) {
+          setTimerActive(true)
+          const end = new Date(data.dailyLog.timer_end).getTime()
+          const now = Date.now()
+          const distance = end - now
+          if (distance > 0) {
+            const m = Math.floor((distance % 3600000) / 60000)
+            const s = Math.floor((distance % 60000) / 1000)
+            setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
+          } else {
+            setTimeLeft("00:00")
+          }
+        } else {
+          setTimerActive(false)
+          setTimeLeft(null)
+        }
+      } catch (e) { console.error(e) }
+    }
+
+    fetchData()
+    const interval = setInterval(fetchData, 5000) // Poll every 5s for global state
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (isDark) {
@@ -34,19 +72,44 @@ export default function Header() {
 
   return (
     <>
-      <header className="p-4 flex items-center bg-zinc-950 text-white shadow-2xl border-b border-zinc-800 sticky top-0 z-40">
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
-          aria-label="Open menu"
-        >
-          <Menu size={24} className="text-primary" />
-        </button>
-        <div className="ml-4 flex items-center gap-3">
-          <div className="bg-primary h-9 w-9 rounded-lg flex items-center justify-center font-black text-black shadow-[0_0_15px_rgba(255,190,0,0.3)]">V</div>
-          <div className="flex flex-col -space-y-1">
-            <span className="text-lg font-black tracking-tighter uppercase italic">Vector</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Command Center</span>
+      <header className="p-4 flex items-center justify-between bg-zinc-950 text-white shadow-2xl border-b border-zinc-800 sticky top-0 z-40 h-[65px]">
+        <div className="flex items-center">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="p-2 hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
+            aria-label="Open menu"
+          >
+            <Menu size={24} className="text-primary" />
+          </button>
+          <div className="ml-4 flex items-center gap-3">
+            <div className="bg-primary h-9 w-9 rounded-lg flex items-center justify-center font-black text-black shadow-[0_0_15px_rgba(255,190,0,0.3)]">V</div>
+            <div className="flex flex-col -space-y-1 hidden md:flex">
+              <span className="text-lg font-black tracking-tighter uppercase italic text-white">Vector</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Command Center</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Performance HUD on Navbar Right */}
+        <div className="flex items-center gap-6">
+          {/* Global XP */}
+          <div className="flex flex-col items-end border-r border-zinc-800 pr-6">
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500">Global Momentum</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-black italic text-white">{xp}</span>
+              <span className="text-[10px] font-black text-primary">XP</span>
+            </div>
+          </div>
+
+          {/* Global Timer Display */}
+          <div className="flex items-center gap-3 bg-zinc-900 px-4 py-1.5 rounded-xl border border-zinc-800 shadow-inner min-w-[120px]">
+            {timerActive ? <Hourglass size={14} className="text-primary animate-pulse" /> : <Clock size={14} className="text-zinc-500" />}
+            <div className="flex flex-col">
+              <span className="text-[7px] font-black uppercase tracking-widest text-zinc-500 leading-none">Clock</span>
+              <span className={`text-sm font-black font-mono leading-none mt-0.5 ${timerActive ? 'text-primary italic' : 'text-zinc-600'}`}>
+                {timeLeft || 'STANDBY'}
+              </span>
+            </div>
           </div>
         </div>
       </header>
