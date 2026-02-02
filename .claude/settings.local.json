@@ -10,7 +10,9 @@
       "Bash(source:*)",
       "Bash(uvicorn:*)",
       "Bash(python:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

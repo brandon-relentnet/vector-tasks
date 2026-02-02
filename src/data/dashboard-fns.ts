@@ -30,9 +30,9 @@ export interface Task {
 export const getDashboardData = async () => {
   try {
     const [tasksRes, projectsRes, dailyRes] = await Promise.all([
-      api.get('/tasks'),
-      api.get('/projects'),
-      api.get('/daily-log'),
+      api.get('/api/v1/tasks'),
+      api.get('/api/v1/projects'),
+      api.get('/api/v1/daily-log'),
     ]);
 
     const tasks: Array<Task> = tasksRes.data;
@@ -80,7 +80,7 @@ export const getDashboardData = async () => {
 
 export const getBriefingHistory = async (params?: { limit?: number; offset?: number; has_morning?: boolean; has_night?: boolean }) => {
   try {
-    const response = await api.get('/daily-log/history', { params });
+    const response = await api.get('/api/v1/daily-log/history', { params });
     return response.data;
   } catch (error) {
     console.error('History API Error:', error);
@@ -90,7 +90,7 @@ export const getBriefingHistory = async (params?: { limit?: number; offset?: num
 
 export const updateTaskStatus = async (taskId: number, status: string) => {
   try {
-    const response = await api.patch(`/tasks/${taskId}`, { status });
+    const response = await api.patch(`/api/v1/tasks/${taskId}`, { status });
     return response.data;
   } catch (error) {
     console.error('Update Task Error:', error);
@@ -100,7 +100,7 @@ export const updateTaskStatus = async (taskId: number, status: string) => {
 
 export const createTask = async (task: Partial<Task>) => {
   try {
-    const response = await api.post('/tasks', task);
+    const response = await api.post('/api/v1/tasks', task);
     return response.data;
   } catch (error) {
     console.error('Create Task Error:', error);
@@ -110,7 +110,7 @@ export const createTask = async (task: Partial<Task>) => {
 
 export const deleteTask = async (taskId: number) => {
   try {
-    const response = await api.delete(`/tasks/${taskId}`);
+    const response = await api.delete(`/api/v1/tasks/${taskId}`);
     return response.data;
   } catch (error) {
     console.error('Delete Task Error:', error);
