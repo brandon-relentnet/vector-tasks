@@ -1,7 +1,8 @@
 import sqlalchemy
 from sqlalchemy import create_engine, text
+import os
 
-DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres")
 engine = create_engine(DATABASE_URL)
 
 with engine.connect() as conn:

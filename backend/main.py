@@ -25,8 +25,8 @@ def get_local_date():
     return now.date()
 
 # Database Connection
-DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
-REDIS_URL = "redis://default:oH3tBNUDRZwiBGJfhWEiHHseSufjBlD2RIwGeqeGY01Jj469KH0L0Lc94Izta91m@5.161.88.222:38272/0"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres")
+REDIS_URL = os.getenv("REDIS_URL", "redis://default:oH3tBNUDRZwiBGJfhWEiHHseSufjBlD2RIwGeqeGY01Jj469KH0L0Lc94Izta91m@5.161.88.222:38272/0")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -137,9 +137,13 @@ sio_app = socketio.ASGIApp(sio)
 
 # App
 app = FastAPI(title="Vector Tasks API")
+
+# CORS Configuration
+origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
