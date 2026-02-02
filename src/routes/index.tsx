@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
+import axios from 'axios'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -29,6 +30,8 @@ function Dashboard() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
+  const [isTimerInputOpen, setIsTimerInputOpen] = useState(false)
+  const [customTimerMinutes, setCustomTimerMinutes] = useState('15')
 
   // Timer logic
   useEffect(() => {
@@ -94,6 +97,20 @@ function Dashboard() {
       await deleteTask(taskId)
     } catch (error) {
       console.error('Failed to delete task:', error)
+    }
+  }
+
+  const updateTimer = async (minutes: number | null) => {
+    try {
+      const timer_end = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
+      await axios.post('http://localhost:8000/daily-log/update', {
+        id: data.dailyLog.id,
+        date: data.dailyLog.date,
+        timer_end
+      })
+      setIsTimerInputOpen(false)
+    } catch (error) {
+      console.error('Failed to update timer:', error)
     }
   }
 
@@ -169,7 +186,7 @@ function Dashboard() {
                     <ul className="space-y-4">
                       {data.dailyLog.goals_for_tomorrow.map((goal: string, i: number) => (
                         <li key={i} className="flex gap-3 text-sm font-bold items-start">
-                          <span className="bg-zinc-900 dark:bg-zinc-950 text-white h-5 w-5 rounded flex items-center justify-center shrink-0 text-[10px] font-black">{i + 1}</span> 
+                          <span className="bg-foreground text-background h-5 w-5 rounded flex items-center justify-center shrink-0 text-[10px] font-black">{i + 1}</span> 
                           <span className="text-foreground italic leading-snug">{goal}</span>
                         </li>
                       ))}
@@ -186,20 +203,45 @@ function Dashboard() {
             <div className="absolute top-0 right-0 p-3 opacity-5">
               {timeLeft ? <Hourglass className="h-16 w-16 text-primary animate-pulse" /> : <Clock className="h-16 w-16 text-white" />}
             </div>
-            <CardHeader className="pb-1 relative z-10">
+            <CardHeader className="pb-1 relative z-10 flex flex-row items-center justify-between">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
                 {timeLeft ? <Hourglass className="h-3 w-3 text-primary" /> : <Clock className="h-3 w-3" />}
                 {timeLeft ? "Mission Timer" : "Deployment Clock"}
               </CardTitle>
+              {!timeLeft && !isTimerInputOpen && (
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-black border border-zinc-700 hover:bg-zinc-800" onClick={() => setIsTimerInputOpen(true)}>
+                  INITIATE
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="relative z-10">
-              {timeLeft ? (
-                <div className="text-5xl font-black tracking-tighter text-primary italic leading-none py-2 font-mono">
-                  {timeLeft}
+              {isTimerInputOpen ? (
+                <div className="flex gap-2 items-center animate-in fade-in slide-in-from-right-2">
+                  <input 
+                    type="number"
+                    autoFocus
+                    className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xl font-bold font-mono text-primary outline-none"
+                    value={customTimerMinutes}
+                    onChange={e => setCustomTimerMinutes(e.target.value)}
+                  />
+                  <span className="text-[10px] font-black text-zinc-500 uppercase">MIN</span>
+                  <Button size="sm" className="bg-primary text-black font-black text-[9px] h-8" onClick={() => updateTimer(parseInt(customTimerMinutes))}>GO</Button>
+                  <Button variant="ghost" size="sm" className="text-zinc-500 h-8" onClick={() => setIsTimerInputOpen(false)}><X className="h-4 w-4" /></Button>
+                </div>
+              ) : timeLeft ? (
+                <div className="flex items-center justify-between group">
+                  <div className="text-5xl font-black tracking-tighter text-primary italic leading-none py-2 font-mono">
+                    {timeLeft}
+                  </div>
+                  <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-500 hover:text-red-500" onClick={() => updateTimer(null)}>
+                      <Square className="h-4 w-4 fill-current" />
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-2xl font-black tracking-tighter text-zinc-400 uppercase italic leading-tight">
-                  No Active Timer
+                <div className="text-2xl font-black tracking-tighter text-zinc-600 uppercase italic leading-tight">
+                  Standby
                 </div>
               )}
             </CardContent>
