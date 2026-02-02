@@ -1,15 +1,36 @@
 import { Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Home,
   Menu,
   Sparkles,
   X,
   Target,
+  Sun,
+  Moon,
 } from 'lucide-react'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark') || 
+             localStorage.getItem('theme') === 'dark'
+    }
+    return false
+  })
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [isDark])
+
+  const toggleDarkMode = () => setIsDark(!isDark)
 
   return (
     <>
@@ -85,9 +106,30 @@ export default function Header() {
           </Link>
         </nav>
 
-        <div className="p-8 border-t border-zinc-900 text-center">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Vector Command v1.2</p>
-          <p className="text-[8px] font-bold uppercase tracking-widest text-zinc-700 mt-1">Operative Status: Online</p>
+        <div className="p-6 border-t border-zinc-900 space-y-6">
+          <button 
+            onClick={toggleDarkMode}
+            className="w-full flex items-center justify-between p-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              {isDark ? (
+                <Moon size={18} className="text-indigo-400" />
+              ) : (
+                <Sun size={18} className="text-amber-400" />
+              )}
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-zinc-200">
+                {isDark ? 'Stealth Mode' : 'Direct Light'}
+              </span>
+            </div>
+            <div className={`w-10 h-5 rounded-full p-1 transition-colors ${isDark ? 'bg-primary' : 'bg-zinc-700'}`}>
+              <div className={`w-3 h-3 bg-black rounded-full transition-transform ${isDark ? 'translate-x-5' : 'translate-x-0'}`} />
+            </div>
+          </button>
+
+          <div className="text-center">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Vector Command v1.2</p>
+            <p className="text-[8px] font-bold uppercase tracking-widest text-zinc-700 mt-1">Status: Online</p>
+          </div>
         </div>
       </aside>
     </>
