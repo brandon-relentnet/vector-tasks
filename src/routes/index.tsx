@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Info } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Check } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -57,6 +57,24 @@ function Dashboard() {
       setLocalTimerEnd(null) 
       router.invalidate()
     }
+  }
+
+  const markBigWinSuccess = async () => {
+    if (!data.dailyLog) return;
+    
+    // Simple logic: If we have goals for tomorrow, shift the next one up
+    // In a real day, this would likely be marked Done and moved to history
+    try {
+      const nextGoals = [...(data.dailyLog.goals_for_tomorrow || [])];
+      const completed = nextGoals.shift();
+      
+      await axios.post('http://localhost:8000/daily-log/update', {
+        id: data.dailyLog.id,
+        date: data.dailyLog.date,
+        big_win: completed || "OBJECTIVES SECURED",
+        goals_for_tomorrow: nextGoals
+      })
+    } catch (e) { console.error(e) }
   }
 
   const handleStatusUpdate = async (taskId: number, newStatus: string) => {
@@ -128,17 +146,46 @@ function Dashboard() {
           </div>
 
           {/* Core Objectives Section */}
-          <div className="p-8 flex flex-col justify-center bg-black/20">
+          <div className="p-8 flex flex-col justify-center bg-black/20 group/win relative">
             <div className="space-y-4">
-               <div>
+               <div className="relative">
                   <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5 flex items-center gap-2">
                     <Target size={10} className="text-primary" /> Primary Objective
                   </span>
-                  <div className="text-sm font-black text-primary italic uppercase leading-tight tracking-tight">
+                  <div className="text-sm font-black text-primary italic uppercase leading-tight tracking-tight pr-8">
                     {data.dailyLog?.big_win || "AWAITING MISSION"}
                   </div>
+                  {data.dailyLog?.big_win && (
+                    <button 
+                        onClick={markBigWinSuccess}
+                        className="absolute -right-2 top-4 h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary opacity-0 group-hover/win:opacity-100 transition-all hover:bg-primary hover:text-black shadow-lg"
+                    >
+                        <Check size={16} strokeWidth={3} />
+                    </button>
+                  )}
                </div>
                
+               {data.dailyLog && (
+                 <div className="pt-2 border-t border-zinc-800">
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-2 block">Mission Progression</span>
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3].map((step) => {
+                          // Simple progress visualization based on remaining goals vs total (max 3)
+                          const totalGoals = 3;
+                          const currentGoalsCount = data.dailyLog?.goals_for_tomorrow?.length || 0;
+                          const completedCount = totalGoals - currentGoalsCount;
+                          const active = step <= completedCount;
+                          return (
+                            <div 
+                                key={step} 
+                                className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${active ? 'bg-primary shadow-[0_0_8px_var(--primary)]' : 'bg-zinc-800'}`} 
+                            />
+                          )
+                      })}
+                    </div>
+                 </div>
+               )}
+
                {data.dailyLog?.starting_nudge && activeBriefing?.type === 'morning' && (
                  <div className="pt-2 border-t border-zinc-800">
                     <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5 flex items-center gap-2">
@@ -146,17 +193,6 @@ function Dashboard() {
                     </span>
                     <div className="text-[10px] font-bold text-zinc-300 uppercase leading-tight">
                       {data.dailyLog.starting_nudge}
-                    </div>
-                 </div>
-               )}
-
-               {activeBriefing?.type === 'night' && data.dailyLog?.goals_for_tomorrow?.length > 0 && (
-                 <div className="pt-2 border-t border-zinc-800">
-                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5">Next Phase Targets</span>
-                    <div className="flex gap-1">
-                      {data.dailyLog.goals_for_tomorrow.slice(0, 3).map((_, i) => (
-                        <div key={i} className="h-1 flex-1 bg-primary/30 rounded-full" />
-                      ))}
                     </div>
                  </div>
                )}
@@ -263,7 +299,7 @@ function Dashboard() {
                       <input autoFocus className="w-full bg-card border-2 border-border rounded-2xl px-6 py-4 text-lg font-black focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all" placeholder="Enter mission parameters..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
                     </div>
                     <div className="flex gap-2 mb-1">
-                      <Button type="submit" className="bg-primary text-zinc-900 font-black uppercase tracking-widest text-[10px] h-14 px-8 rounded-2xl shadow-xl">Deploy</Button>
+                      <Button type="submit" className="bg-primary text-black font-black uppercase tracking-widest text-[10px] h-14 px-8 rounded-2xl shadow-xl">Deploy</Button>
                       <Button type="button" variant="ghost" className="h-14 w-14 rounded-2xl text-muted-foreground hover:bg-rose-50 hover:text-rose-500" onClick={() => setIsAdding(false)}><X size={24} /></Button>
                     </div>
                   </form>
@@ -305,7 +341,7 @@ function Dashboard() {
                             )}
                             {quest.status === 'Working' && (
                               <>
-                                <Button variant="outline" size="sm" className="h-10 bg-primary hover:bg-zinc-900 hover:text-primary text-zinc-900 border-2 border-primary font-black text-[10px] tracking-[0.1em] px-5 rounded-xl transition-all" onClick={() => handleStatusUpdate(quest.id, 'Done')}>
+                                <Button variant="outline" size="sm" className="h-10 bg-primary hover:bg-foreground hover:text-background text-zinc-900 border-2 border-primary font-black text-[10px] tracking-[0.1em] px-5 rounded-xl transition-all" onClick={() => handleStatusUpdate(quest.id, 'Done')}>
                                   FINISH
                                 </Button>
                                 <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl" onClick={() => handleStatusUpdate(quest.id, 'Todo')}>
