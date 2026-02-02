@@ -67,7 +67,7 @@ export const getDashboardData = async () => {
 
     return {
       xp,
-      quests: quests.slice(0, 5),
+      quests,
       history,
       projects: projectsWithCounts,
       dailyLog
