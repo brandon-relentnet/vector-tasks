@@ -120,19 +120,24 @@ function Dashboard() {
     }
   }, [router])
 
-  // Sort projects hierarchically (top-level first, then sub-sectors under parents)
+  // Sort projects hierarchically (sub-sectors appear under their parents)
   const sortedProjects = (() => {
-    const topLevel = data.projects.filter((p: any) => !p.parent_id)
-    const withSubs = [...topLevel].sort((a, b) => a.name.localeCompare(b.name))
+    const topLevel = data.projects
+      .filter((p: any) => !p.parent_id)
+      .sort((a, b) => a.name.localeCompare(b.name))
 
-    for (const parent of withSubs) {
+    const result: any[] = []
+
+    for (const parent of topLevel) {
+      result.push(parent)
+      // Find and add sub-sectors immediately after their parent
       const subs = data.projects
         .filter((p: any) => p.parent_id === parent.id)
         .sort((a, b) => a.name.localeCompare(b.name))
-      withSubs.push(...subs)
+      result.push(...subs)
     }
 
-    return withSubs
+    return result
   })()
 
   // OBJECTIVE LOGIC
