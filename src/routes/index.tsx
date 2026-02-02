@@ -76,6 +76,21 @@ function Dashboard() {
   const [newSectorParent, setNewSectorParent] = useState<number | null>(null)
   const [isSubmittingSector, setIsSubmittingSector] = useState(false)
 
+  // Collapsed sectors state
+  const [collapsedSectors, setCollapsedSectors] = useState<Set<number>>(new Set())
+
+  const toggleSectorCollapse = (projectId: number) => {
+    setCollapsedSectors(prev => {
+      const next = new Set(prev)
+      if (next.has(projectId)) {
+        next.delete(projectId)
+      } else {
+        next.add(projectId)
+      }
+      return next
+    })
+  }
+
   const handleCreateSector = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newSectorName.trim()) return
@@ -130,15 +145,23 @@ function Dashboard() {
 
     for (const parent of topLevel) {
       result.push(parent)
-      // Find and add sub-sectors immediately after their parent
-      const subs = data.projects
-        .filter((p: any) => p.parent_id === parent.id)
-        .sort((a, b) => a.name.localeCompare(b.name))
-      result.push(...subs)
+
+      // Only show sub-sectors if parent is not collapsed
+      if (!collapsedSectors.has(parent.id)) {
+        const subs = data.projects
+          .filter((p: any) => p.parent_id === parent.id)
+          .sort((a, b) => a.name.localeCompare(b.name))
+        result.push(...subs)
+      }
     }
 
     return result
   })()
+
+  // Check if a parent sector has sub-sectors
+  const hasSubSectors = (projectId: number) => {
+    return data.projects.some((p: any) => p.parent_id === projectId)
+  }
 
   // OBJECTIVE LOGIC
   // Big Win is always the primary focus for the current day.
@@ -435,6 +458,9 @@ function Dashboard() {
               const isSubSector = !!project.parent_id
               const indent = isSubSector ? 'pl-6' : ''
               const activeCount = data.quests.filter((q: any) => q.project_id === project.id).length
+              const isParent = hasSubSectors(project.id)
+              const isCollapsed = collapsedSectors.has(project.id)
+
               return (
                 <div key={project.id} className={`relative group ${indent}`}>
                   <button
@@ -453,6 +479,23 @@ function Dashboard() {
                       >
                         <Trash2 size={12} />
                       </button>
+
+                      {/* Collapse/expand button for parent sectors */}
+                      {isParent && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleSectorCollapse(project.id)
+                          }}
+                          className="text-zinc-500 hover:text-white transition-colors"
+                        >
+                          <ChevronRight
+                            size={14}
+                            className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+                          />
+                        </button>
+                      )}
+
                       <span className="flex-1">{project.name}</span>
                       <Badge
                         variant="outline"
