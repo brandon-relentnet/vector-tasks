@@ -172,9 +172,9 @@ function BriefingsPage() {
                             ))}
                           </ul>
                         </div>
-                      </div>
-                    )}
-                  </CardContent>
+                      )}
+                    </div>
+                  )}
                 </Card>
               </div>
             </div>
