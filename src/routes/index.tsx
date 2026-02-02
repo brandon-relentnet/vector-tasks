@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { getDashboardData, updateTaskStatus, createTask, deleteTask } from '../data/dashboard-fns'
+import { getDashboardData, updateTaskStatus, createTask, deleteTask, api } from '../data/dashboard-fns'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -36,7 +36,7 @@ function Dashboard() {
   const [goalIndex, setGoalIndex] = useState(0)
 
   useEffect(() => {
-    const socket = io('http://localhost:8000')
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8000')
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
     socket.on('update', () => {
@@ -50,7 +50,7 @@ function Dashboard() {
     const newEnd = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
     setLocalTimerEnd(newEnd)
     try {
-      await axios.post('http://localhost:8000/daily-log/update', {
+      await api.post('/daily-log/update', {
         id: data.dailyLog.id,
         date: data.dailyLog.date,
         timer_end: newEnd
@@ -74,7 +74,7 @@ function Dashboard() {
     if (!data.dailyLog) return;
     try {
       const newCompleted = [...completedGoals, goal].join('|');
-      await axios.post('http://localhost:8000/daily-log/update', {
+      await api.post('/daily-log/update', {
         id: data.dailyLog.id,
         date: data.dailyLog.date,
         reflections: newCompleted
