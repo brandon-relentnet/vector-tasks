@@ -30,10 +30,17 @@ import os
 
 # Parse CORS_ORIGINS - handle duplicates and whitespace
 cors_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-origins = list(dict.fromkeys(o.strip() for o in cors_env.split(",") if o.strip()))
+origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+origins = list(dict.fromkeys(origins))  # Remove duplicates
 print(f"[Socket] CORS origins: {origins}")
 
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=origins)
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins=origins,
+    cors_credentials=True,
+    logger=True,
+    engineio_logger=True,
+)
 sio_app = socketio.ASGIApp(sio)
 
 @sio.event

@@ -69,13 +69,25 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded)
 cors_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
 origins = list(dict.fromkeys(o.strip() for o in cors_env.split(",") if o.strip()))
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Custom CORS middleware that excludes /socket.io (handled by socket.io's own CORS)
+@app.middleware("http")
+async def custom_cors_middleware(request: Request, call_next):
+    # Skip CORS for socket.io - socket.io handles its own CORS
+    if request.url.path.startswith("/socket.io"):
+        response = await call_next(request)
+        return response
+
+    # Apply CORS headers manually
+    response = await call_next(request)
+
+    origin = request.headers.get("origin")
+    if origin in origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+
+    return response
 
 # Request logging middleware
 @app.middleware("http")
