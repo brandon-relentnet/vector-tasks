@@ -175,8 +175,8 @@ function BriefingsPage() {
                       )}
                     </div>
                   )}
-                </Card>
-              </div>
+                </CardContent>
+              </Card>
             </div>
           )
         }) : (
