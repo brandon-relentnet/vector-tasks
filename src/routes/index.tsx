@@ -114,6 +114,12 @@ function Dashboard() {
     setOptimisticTimerEnd(timer_end)
     if (!timer_end) setTimeLeft(null)
 
+    // FORCE immediate local state update for the clock display
+    if (timer_end) {
+      const minutesStr = Math.floor(minutes!).toString().padStart(2, '0')
+      setTimeLeft(`${minutesStr}:00`)
+    }
+
     try {
       // 2. Background Sync: Update the server
       await axios.post('http://localhost:8000/daily-log/update', {
