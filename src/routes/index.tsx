@@ -160,6 +160,11 @@ function Dashboard() {
       }
     })
 
+    // Debug: log all events
+    socket.onAny((event, ...args) => {
+      console.log('[Socket] Event received:', event, args)
+    })
+
     return () => {
       console.log('[Socket] Cleaning up')
       socket.disconnect()
