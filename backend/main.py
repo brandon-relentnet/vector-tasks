@@ -284,3 +284,54 @@ async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db
     r.delete(f"log:{today.isoformat()}")
     await notify_dashboard()
     return db_log
+
+# --- Timer API ---
+
+class TimerStart(BaseModel):
+    minutes: int
+
+class TimerStatus(BaseModel):
+    active: bool
+    end_time: Optional[datetime] = None
+    remaining_seconds: Optional[int] = None
+
+@app.get("/timer", response_model=TimerStatus)
+def get_timer(db: Session = Depends(get_db)):
+    today = get_local_date()
+    log = db.query(DailyLog).filter(DailyLog.date == today).first()
+    
+    if not log or not log.timer_end:
+        return {"active": False}
+    
+    now = datetime.now(UTC)
+    if log.timer_end > now:
+        remaining = int((log.timer_end - now).total_seconds())
+        return {"active": True, "end_time": log.timer_end, "remaining_seconds": remaining}
+    
+    return {"active": False, "end_time": log.timer_end, "remaining_seconds": 0}
+
+@app.post("/timer/start", response_model=TimerStatus)
+async def start_timer(timer: TimerStart, db: Session = Depends(get_db)):
+    today = get_local_date()
+    log = db.query(DailyLog).filter(DailyLog.date == today).first()
+    if not log:
+        log = DailyLog(date=today)
+        db.add(log)
+    
+    end_time = datetime.now(UTC) + timedelta(minutes=timer.minutes)
+    log.timer_end = end_time
+    db.commit()
+    
+    await notify_dashboard()
+    return {"active": True, "end_time": end_time, "remaining_seconds": timer.minutes * 60}
+
+@app.post("/timer/stop", response_model=TimerStatus)
+async def stop_timer(db: Session = Depends(get_db)):
+    today = get_local_date()
+    log = db.query(DailyLog).filter(DailyLog.date == today).first()
+    if log:
+        log.timer_end = None
+        db.commit()
+    
+    await notify_dashboard()
+    return {"active": False}

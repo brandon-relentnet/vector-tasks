@@ -51,14 +51,16 @@ function Dashboard() {
   }, [router])
 
   const handleTimerAction = async (minutes: number | null) => {
+    // Optimistic Update
     const newEnd = minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null
     setLocalTimerEnd(newEnd)
+    
     try {
-      await api.post('/daily-log/update', {
-        id: data.dailyLog.id,
-        date: data.dailyLog.date,
-        timer_end: newEnd
-      })
+      if (minutes) {
+        await api.post('/timer/start', { minutes })
+      } else {
+        await api.post('/timer/stop')
+      }
     } catch (error) {
       setLocalTimerEnd(null) 
       router.invalidate()
