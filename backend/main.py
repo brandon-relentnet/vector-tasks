@@ -51,6 +51,16 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     tasks = relationship("Task", back_populates="project")
 
+class Briefing(Base):
+    __tablename__ = "briefings"
+    id = Column(Integer, primary_key=True, index=True)
+    daily_log_id = Column(Integer, ForeignKey("daily_logs.id"))
+    slot = Column(String) # "Morning", "Midday", "Shutdown", "Night", "General"
+    content = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    
+    daily_log = relationship("DailyLog", back_populates="briefings")
+
 class Task(Base):
     __tablename__ = "tasks"
     id = Column(Integer, primary_key=True, index=True)
@@ -71,19 +81,33 @@ class DailyLog(Base):
     date = Column(Date, unique=True, default=get_local_date)
     big_win = Column(Text)
     starting_nudge = Column(Text)
-    morning_briefing = Column(Text)
-    midday_briefing = Column(Text)
-    shutdown_briefing = Column(Text)
-    nightly_reflection = Column(Text)
+    
+    # Deprecated columns kept for safety, use 'briefings' relation
+    morning_briefing = Column(Text, nullable=True) 
+    midday_briefing = Column(Text, nullable=True)
+    shutdown_briefing = Column(Text, nullable=True)
+    nightly_reflection = Column(Text, nullable=True)
+    
     goals_for_tomorrow = Column(JSON, default=[])
     timer_end = Column(DateTime(timezone=True), nullable=True)
     reflections = Column(Text)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    
+    briefings = relationship("Briefing", back_populates="daily_log", order_by="desc(Briefing.created_at)")
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
 
 # Schemas
+class BriefingBase(BaseModel):
+    slot: str
+    content: str
+
+class BriefingOut(BriefingBase):
+    id: int
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
 class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -136,10 +160,16 @@ class DailyLogOut(BaseModel):
     date: py_date
     big_win: Optional[str] = None
     starting_nudge: Optional[str] = None
+    
+    # Include list of briefings
+    briefings: List[BriefingOut] = []
+    
+    # Deprecated fields (optional)
     morning_briefing: Optional[str] = None
     midday_briefing: Optional[str] = None
     shutdown_briefing: Optional[str] = None
     nightly_reflection: Optional[str] = None
+    
     goals_for_tomorrow: List[str] = []
     timer_end: Optional[datetime] = None
     reflections: Optional[str] = None
@@ -275,6 +305,38 @@ def get_daily_log(db: Session = Depends(get_db)):
         r.setex(f"log:{today_str}", 60, json.dumps(log_data))
     return log
 
+@app.post("/daily-log/briefing", response_model=BriefingOut)
+async def add_briefing(briefing: BriefingBase, db: Session = Depends(get_db)):
+    today = get_local_date()
+    log = db.query(DailyLog).filter(DailyLog.date == today).first()
+    if not log:
+        log = DailyLog(date=today)
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        
+    new_briefing = Briefing(daily_log_id=log.id, **briefing.model_dump())
+    db.add(new_briefing)
+    
+    # For backward compatibility, also update the old column if it matches slot
+    if briefing.slot == "Morning":
+        log.morning_briefing = briefing.content
+    elif briefing.slot == "Midday":
+        log.midday_briefing = briefing.content
+    elif briefing.slot == "Shutdown":
+        log.shutdown_briefing = briefing.content
+    elif briefing.slot == "Night":
+        log.nightly_reflection = briefing.content
+        
+    db.commit()
+    db.refresh(new_briefing)
+    
+    # Invalidate log cache
+    r.delete(f"log:{today.isoformat()}")
+    await notify_dashboard()
+    
+    return new_briefing
+
 @app.get("/daily-log/history", response_model=List[DailyLogOut])
 def get_daily_log_history(
     db: Session = Depends(get_db), 
@@ -299,7 +361,7 @@ async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db
         db.add(db_log)
     update_data = log_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        if key != 'id' and key != 'date':
+        if key != 'id' and key != 'date' and key != 'briefings': # Don't update relations via this endpoint
             setattr(db_log, key, value)
     db.commit()
     db.refresh(db_log)
