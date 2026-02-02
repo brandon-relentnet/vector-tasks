@@ -124,13 +124,36 @@ function Dashboard() {
   }
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8000')
-    socket.on('connect', () => setIsConnected(true))
-    socket.on('disconnect', () => setIsConnected(false))
-    socket.on('update', async () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    console.log('[Socket] Connecting to:', apiUrl)
+    const socket = io(apiUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    })
+
+    socket.on('connect', () => {
+      console.log('[Socket] Connected:', socket.id)
+      setIsConnected(true)
+    })
+
+    socket.on('connect_error', (error) => {
+      console.error('[Socket] Connection error:', error.message)
+    })
+
+    socket.on('disconnect', (reason) => {
+      console.log('[Socket] Disconnected:', reason)
+      setIsConnected(false)
+    })
+
+    socket.on('update', async (data) => {
+      console.log('[Socket] Received update:', data)
       await router.invalidate()
     })
+
     return () => {
+      console.log('[Socket] Disconnecting')
       socket.disconnect()
     }
   }, [router])

@@ -25,8 +25,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 cache_service = CacheService(redis_client)
 
-# Socket.IO setup
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=[])
+# Socket.IO setup - allow CORS from frontend
+import os
+frontend_origin = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")[0]
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=[frontend_origin])
 sio_app = socketio.ASGIApp(sio)
 
 @sio.event
@@ -39,6 +41,7 @@ async def disconnect(sid):
 
 async def notify_dashboard():
     """Broadcast update event to all connected clients"""
+    print(f"[Socket] Broadcasting update to all clients")
     await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
 
 def get_db():
