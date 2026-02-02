@@ -6,7 +6,7 @@ Daily logs track XP, reflections, goals, and briefings for each operational day.
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from models import DailyLog, Briefing, get_local_date
 from schemas import (
@@ -42,7 +42,8 @@ def get_daily_log(db: Session = Depends(get_db)):
     if cached:
         return cached
 
-    log = db.query(DailyLog).filter(DailyLog.date == today_date).first()
+    # Eager load briefings to avoid N+1 query
+    log = db.query(DailyLog).options(joinedload(DailyLog.briefings)).filter(DailyLog.date == today_date).first()
     if log:
         log_data = DailyLogOut.model_validate(log).model_dump(mode='json')
         cache_service.set_daily_log(today_date, log_data)

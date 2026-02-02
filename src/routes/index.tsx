@@ -144,6 +144,29 @@ function Dashboard() {
 
   const getActiveBriefing = () => {
     if (!data.dailyLog) return null
+
+    // Check new briefings table first
+    const briefings = data.dailyLog.briefings || []
+    if (briefings.length > 0) {
+      // Get the most recent briefing
+      const latestBriefing = briefings[0] // Already ordered by created_at desc
+      const slotConfig: Record<string, { icon: any; title: string; accent: string }> = {
+        'Morning': { icon: Sparkles, title: 'Strategic Briefing', accent: 'text-amber-400' },
+        'Midday': { icon: Zap, title: 'Mid-Day Pivot', accent: 'text-blue-400' },
+        'Shutdown': { icon: LogOut, title: 'Shutdown Ritual', accent: 'text-zinc-400' },
+        'Night': { icon: Moon, title: 'Nightly Reflection', accent: 'text-indigo-400' },
+      }
+      const config = slotConfig[latestBriefing.slot] || slotConfig['Morning']
+      return {
+        type: latestBriefing.slot.toLowerCase(),
+        icon: <config.icon className="w-4 h-4" />,
+        title: config.title,
+        content: latestBriefing.content,
+        accent: config.accent,
+      }
+    }
+
+    // Fallback to deprecated columns
     if (data.dailyLog.nightly_reflection)
       return {
         type: 'night',
