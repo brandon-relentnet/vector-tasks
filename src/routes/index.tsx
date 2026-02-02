@@ -246,41 +246,37 @@ function Dashboard() {
           </div>
 
           {/* Timer Module in Sidebar */}
-          <div className={`mx-4 mb-4 rounded-2xl shadow-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] border overflow-hidden ${
-            isTimerActive 
-              ? 'bg-primary border-primary p-4' 
-              : 'bg-zinc-900 dark:bg-zinc-950 border-zinc-800 p-4'
-          }`}>
-            {!isTimerActive ? (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards">
-                <div className="flex items-center justify-between">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Deploy Timer</span>
-                  <Clock size={12} className="text-zinc-500" />
-                </div>
-                <div className="flex items-center justify-between bg-zinc-800 rounded-xl p-1.5 border border-zinc-700/50">
-                  <button onClick={() => setTimerSetupValue(v => Math.max(1, v - 5))} className="text-zinc-500 hover:text-primary transition-colors p-1"><Minus size={14} /></button>
-                  <span className="text-xl font-black font-mono text-white">{timerSetupValue}</span>
-                  <button onClick={() => setTimerSetupValue(v => v + 5)} className="text-zinc-500 hover:text-primary transition-colors p-1"><Plus size={14} /></button>
-                </div>
-                <Button 
-                  className="w-full bg-primary text-black font-black uppercase text-[10px] h-9 rounded-xl shadow-lg transition-all"
-                  onClick={() => handleTimerAction(timerSetupValue)}
-                >
-                  Launch
-                </Button>
+          {!isTimerActive && (
+            <div className="p-4 mx-4 mb-4 bg-zinc-900 dark:bg-zinc-950 rounded-2xl border border-zinc-800 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Deploy Timer</span>
+                <Clock size={12} className="text-zinc-500" />
               </div>
-            ) : (
-              <div className="flex items-center justify-between group animate-in fade-in zoom-in-95 duration-500 fill-mode-forwards">
-                <div className="flex items-center gap-3">
-                  <Hourglass size={16} className="text-black animate-pulse" />
-                  <span className="text-[10px] font-black uppercase text-black tracking-widest">Active</span>
-                </div>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-black hover:bg-black/10 transition-colors" onClick={() => handleTimerAction(null)}>
-                  <Square className="h-4 w-4 fill-current" />
-                </Button>
+              <div className="flex items-center justify-between bg-zinc-800 rounded-xl p-1.5 border border-zinc-700/50">
+                <button onClick={() => setTimerSetupValue(v => Math.max(1, v - 5))} className="text-zinc-500 hover:text-primary transition-colors p-1"><Minus size={14} /></button>
+                <span className="text-xl font-black font-mono text-white">{timerSetupValue}</span>
+                <button onClick={() => setTimerSetupValue(v => v + 5)} className="text-zinc-500 hover:text-primary transition-colors p-1"><Plus size={14} /></button>
               </div>
-            )}
-          </div>
+              <Button 
+                className="w-full bg-primary text-black font-black uppercase text-[10px] h-9 rounded-xl shadow-lg"
+                onClick={() => handleTimerAction(timerSetupValue)}
+              >
+                Launch
+              </Button>
+            </div>
+          )}
+          
+          {isTimerActive && (
+            <div className="p-4 mx-4 mb-4 bg-primary rounded-2xl shadow-[0_0_20px_rgba(255,190,0,0.2)] flex items-center justify-between group">
+              <div className="flex items-center gap-3">
+                <Hourglass size={16} className="text-black animate-pulse" />
+                <span className="text-[10px] font-black uppercase text-black tracking-widest">Active</span>
+              </div>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-black hover:bg-black/10" onClick={() => handleTimerAction(null)}>
+                <Square className="h-4 w-4 fill-current" />
+              </Button>
+            </div>
+          )}
 
           <div className="p-6 bg-muted/20 border-t border-border mt-auto">
              <div className="flex items-center gap-2 text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
