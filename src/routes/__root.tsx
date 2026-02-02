@@ -9,7 +9,7 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <div className="min-h-screen relative isolate">
+    <div className="isolate relative min-h-screen">
       <StarParticles />
       <Header />
       <main>

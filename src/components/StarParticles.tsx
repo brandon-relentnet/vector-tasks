@@ -22,7 +22,7 @@ const StarParticles = () => {
     () => ({
       autoPlay: true,
       background: {
-        color: { value: 'transparent' }, 
+        color: { value: 'transparent' },
       },
       fullScreen: {
         enable: false,
@@ -39,7 +39,7 @@ const StarParticles = () => {
           },
         },
         color: {
-          value: ['#ffffff', '#E1BE4C'], 
+          value: ['#ffffff', '#E1BE4C'],
         },
         shape: {
           type: 'circle',
@@ -98,12 +98,12 @@ const StarParticles = () => {
 
   if (init) {
     return (
-      <div className="fixed inset-0 -z-10 bg-zinc-950">
+      <div className="-z-10 fixed inset-0 bg-zinc-950">
         <Particles
           id="tsparticles"
           particlesLoaded={particlesLoaded}
           options={options}
-          className="h-full w-full"
+          className="w-full h-full"
         />
       </div>
     )
