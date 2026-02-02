@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, UTC, date as py_date
+import pytz
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,15 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
 import socketio
 import redis
 import json
+
+# Timezone Configuration
+LOCAL_TZ = pytz.timezone("America/Chicago")
+
+def get_local_now():
+    return datetime.now(UTC).astimezone(LOCAL_TZ)
+
+def get_local_date():
+    return get_local_now().date()
 
 # Database Connection
 DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
@@ -50,7 +60,7 @@ class Task(Base):
 class DailyLog(Base):
     __tablename__ = "daily_logs"
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, unique=True, default=lambda: datetime.now(UTC).date())
+    date = Column(Date, unique=True, default=get_local_date)
     big_win = Column(Text)
     starting_nudge = Column(Text)
     morning_briefing = Column(Text)
@@ -225,7 +235,8 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
 
 @app.get("/daily-log", response_model=Optional[DailyLogOut])
 def get_daily_log(db: Session = Depends(get_db)):
-    today_date = datetime.now(UTC).date()
+    # Try Redis for today's log (CST)
+    today_date = get_local_date()
     today_str = today_date.isoformat()
     cached = r.get(f"log:{today_str}")
     if cached:
@@ -256,7 +267,7 @@ def get_daily_log_history(
 
 @app.post("/daily-log/update", response_model=DailyLogOut)
 async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db)):
-    today = datetime.now(UTC).date()
+    today = get_local_date()
     db_log = db.query(DailyLog).filter(DailyLog.date == today).first()
     
     if not db_log:
