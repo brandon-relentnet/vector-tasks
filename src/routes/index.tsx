@@ -126,13 +126,16 @@ function Dashboard() {
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
     console.log('[Socket] Connecting to:', apiUrl)
+
     const socket = io(apiUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      timeout: 10000,
     })
 
+    // Connection handlers
     socket.on('connect', () => {
       console.log('[Socket] Connected:', socket.id)
       setIsConnected(true)
@@ -148,12 +151,17 @@ function Dashboard() {
     })
 
     socket.on('update', async (data) => {
-      console.log('[Socket] Received update:', data)
-      await router.invalidate()
+      console.log('[Socket] Received update event:', data)
+      try {
+        await router.invalidate()
+        console.log('[Socket] Router invalidated, data should be refreshed')
+      } catch (e) {
+        console.error('[Socket] Error invalidating router:', e)
+      }
     })
 
     return () => {
-      console.log('[Socket] Disconnecting')
+      console.log('[Socket] Cleaning up')
       socket.disconnect()
     }
   }, [router])

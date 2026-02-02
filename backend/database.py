@@ -53,8 +53,10 @@ async def disconnect(sid):
 
 async def notify_dashboard():
     """Broadcast update event to all connected clients"""
-    print(f"[Socket] Broadcasting update to all clients")
+    connected_count = len(sio.manager.get_default_namespace().connections)
+    print(f"[Socket] Broadcasting update to {connected_count} client(s)")
     await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
+    print(f"[Socket] Broadcast complete")
 
 def get_db():
     """Database session dependency"""
