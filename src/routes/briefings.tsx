@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getBriefingHistory } from '../data/dashboard-fns'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Sparkles, Moon, Calendar, ChevronLeft, ChevronRight, Zap, LogOut, History as HistoryIcon, Target } from 'lucide-react'
+import { Calendar, History as HistoryIcon, LogOut, Moon, Sparkles, Target, Zap } from 'lucide-react'
 import { useState } from 'react'
+import { getBriefingHistory } from '../data/dashboard-fns'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/briefings')({

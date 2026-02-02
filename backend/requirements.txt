@@ -8,3 +8,4 @@ pydantic-settings
 pytz
 redis
 python-socketio
+slowapi

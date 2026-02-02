@@ -1,4 +1,4 @@
-export const getPunkSongs = async () => [
+export const getPunkSongs = () => [
   { id: 1, name: 'Teenage Dirtbag', artist: 'Wheatus' },
   { id: 2, name: 'Smells Like Teen Spirit', artist: 'Nirvana' },
   { id: 3, name: 'The Middle', artist: 'Jimmy Eat World' },

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
-import { ChevronDown, Check } from "lucide-react"
+import { Check, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface SelectOption {
@@ -11,7 +11,7 @@ export interface SelectOption {
 interface SelectProps {
   value: string | number | null
   onChange: (value: string | number) => void
-  options: SelectOption[]
+  options: Array<SelectOption>
   placeholder?: string
   className?: string
 }

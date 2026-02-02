@@ -1,16 +1,16 @@
 import { Link } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
-import { getDashboardData } from '../data/dashboard-fns'
 import {
   Home,
   Menu,
-  Sparkles,
-  X,
-  Target,
-  Sun,
   Moon,
+  Sparkles,
+  Sun,
+  Target,
+  X,
 } from 'lucide-react'
+import { getDashboardData } from '../data/dashboard-fns'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)

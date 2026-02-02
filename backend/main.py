@@ -1,186 +1,79 @@
 import os
+import time
+from contextlib import asynccontextmanager
+from datetime import datetime, UTC
 from dotenv import load_dotenv
 load_dotenv()
 
-from datetime import datetime, UTC, date as py_date, timedelta
-import pytz
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime, Date, JSON
-from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
-import socketio
-import redis
-import json
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from sqlalchemy import text
+from slowapi import Limiter, RequestRateLimitExceeded
+from slowapi.util import get_remote_address
 
-# Timezone Configuration
-LOCAL_TZ = pytz.timezone("America/Chicago")
+from database import sio_app, engine
+from exceptions import api_exception_handler, http_exception_handler, validation_exception_handler, general_exception_handler
+from routes.projects import router as projects_router
+from routes.tasks import router as tasks_router
+from routes.daily_log import router as daily_log_router
 
-def get_local_now():
-    return datetime.now(UTC).astimezone(LOCAL_TZ)
+# Rate limiter setup
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
-def get_local_date():
-    now = get_local_now()
-    # If it's before 8:00 AM, treat it as the previous day
-    if now.hour < 8:
-        return (now - timedelta(days=1)).date()
-    return now.date()
+# Request timing middleware
+async def log_requests_middleware(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
 
-# Database Connection
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres")
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    if request.url.path.startswith("/api/v1"):
+        print(f"[{request.method}] {request.url.path} - {response.status_code} ({duration:.3f}s)")
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://default:oH3tBNUDRZwiBGJfhWEiHHseSufjBlD2RIwGeqeGY01Jj469KH0L0Lc94Izta91m@5.161.88.222:38272/0")
+    return response
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# Startup event
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: validate connections
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("Database connection: OK")
+    except Exception as e:
+        print(f"Database connection: FAILED - {e}")
 
-# Redis Client
-r = redis.from_url(REDIS_URL, decode_responses=True)
+    yield
+    print("Shutting down...")
 
-# Models (No changes to schema)
-class Project(Base):
-    __tablename__ = "projects"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
-    description = Column(Text)
-    category = Column(String)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    tasks = relationship("Task", back_populates="project")
+# Create FastAPI app
+app = FastAPI(
+    title="Vector Tasks API",
+    description="Gamified task management API with projects, tasks, and daily logs",
+    version="2.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    lifespan=lifespan
+)
 
-class Briefing(Base):
-    __tablename__ = "briefings"
-    id = Column(Integer, primary_key=True, index=True)
-    daily_log_id = Column(Integer, ForeignKey("daily_logs.id"))
-    slot = Column(String) # "Morning", "Midday", "Shutdown", "Night", "General"
-    content = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    
-    daily_log = relationship("DailyLog", back_populates="briefings")
+# Add rate limiter to app state
+app.state.limiter = limiter
 
-class Task(Base):
-    __tablename__ = "tasks"
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"))
-    title = Column(String, nullable=False)
-    description = Column(Text)
-    priority = Column(String, default="Med")
-    status = Column(String, default="Todo")
-    subtasks = Column(JSON, default=[])
-    nudge_count = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
-    project = relationship("Project", back_populates="tasks")
-
-class DailyLog(Base):
-    __tablename__ = "daily_logs"
-    id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, unique=True, default=get_local_date)
-    big_win = Column(Text)
-    starting_nudge = Column(Text)
-    
-    # Deprecated columns kept for safety, use 'briefings' relation
-    morning_briefing = Column(Text, nullable=True) 
-    midday_briefing = Column(Text, nullable=True)
-    shutdown_briefing = Column(Text, nullable=True)
-    nightly_reflection = Column(Text, nullable=True)
-    
-    goals_for_tomorrow = Column(JSON, default=[])
-    timer_end = Column(DateTime(timezone=True), nullable=True)
-    reflections = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    
-    briefings = relationship("Briefing", back_populates="daily_log", order_by="desc(Briefing.created_at)")
-
-# Create tables if they don't exist
-Base.metadata.create_all(bind=engine)
-
-# Schemas
-class BriefingBase(BaseModel):
-    slot: str
-    content: str
-
-class BriefingOut(BriefingBase):
-    id: int
-    created_at: datetime
-    model_config = ConfigDict(from_attributes=True)
-
-class TaskBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    priority: str = "Med"
-    status: str = "Todo"
-    project_id: Optional[int] = None
-    subtasks: List[dict] = []
-    nudge_count: int = 0
-
-class TaskCreate(TaskBase):
-    pass
-
-class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    priority: Optional[str] = None
-    status: Optional[str] = None
-    project_id: Optional[int] = None
-    subtasks: Optional[List[dict]] = None
-    nudge_count: Optional[int] = None
-
-class TaskOut(TaskBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-    project_name: Optional[str] = None
-    model_config = ConfigDict(from_attributes=True)
-
-    @classmethod
-    def from_orm(cls, obj):
-        instance = super().from_orm(obj)
-        if obj.project:
-            instance.project_name = obj.project.name
-        return instance
-
-class ProjectOut(BaseModel):
-    id: int
-    name: str
-    description: Optional[str]
-    category: Optional[str]
-    model_config = ConfigDict(from_attributes=True)
-
-class ProjectCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    category: Optional[str] = "General"
-
-class DailyLogOut(BaseModel):
-    id: int
-    date: py_date
-    big_win: Optional[str] = None
-    starting_nudge: Optional[str] = None
-    
-    # Include list of briefings
-    briefings: List[BriefingOut] = []
-    
-    # Deprecated fields (optional)
-    morning_briefing: Optional[str] = None
-    midday_briefing: Optional[str] = None
-    shutdown_briefing: Optional[str] = None
-    nightly_reflection: Optional[str] = None
-    
-    goals_for_tomorrow: List[str] = []
-    timer_end: Optional[datetime] = None
-    reflections: Optional[str] = None
-    model_config = ConfigDict(from_attributes=True)
-
-# Socket.IO setup
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=[])
-sio_app = socketio.ASGIApp(sio)
-
-# App
-app = FastAPI(title="Vector Tasks API")
+# Exception handler for rate limiting
+@app.exception_handler(RequestRateLimitExceeded)
+async def rate_limit_exception_handler(request: Request, exc: RequestRateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "success": False,
+            "error": {
+                "code": "RATE_LIMIT_EXCEEDED",
+                "message": "Too many requests. Please try again later.",
+                "details": {"retry_after": exc.detail}
+            }
+        }
+    )
 
 # CORS Configuration
 origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -192,179 +85,43 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+
+    if request.url.path.startswith("/api/v1"):
+        print(f"[{request.method}] {request.url.path} - {response.status_code} ({duration:.3f}s)")
+
+    return response
+
+# Mount Socket.IO
 app.mount("/socket.io", sio_app)
 
-@sio.event
-async def connect(sid, environ):
-    print(f"Client connected: {sid}")
+# Register exception handlers
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(ValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
 
-@sio.event
-async def disconnect(sid):
-    print(f"Client disconnected: {sid}")
+# Include routers
+app.include_router(projects_router)
+app.include_router(tasks_router)
+app.include_router(daily_log_router)
 
-async def notify_dashboard():
-    await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    return {"status": "healthy", "timestamp": datetime.now(UTC).isoformat()}
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@app.get("/projects", response_model=List[ProjectOut])
-def get_projects(db: Session = Depends(get_db)):
-    cached = r.get("projects")
-    if cached:
-        return json.loads(cached)
-    projects = db.query(Project).all()
-    r.setex("projects", 300, json.dumps([ProjectOut.model_validate(p).model_dump() for p in projects]))
-    return projects
-
-@app.post("/projects", response_model=ProjectOut)
-async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
-    db_project = db.query(Project).filter(Project.name == project.name).first()
-    if db_project:
-        raise HTTPException(status_code=400, detail="Project already exists")
-    
-    new_project = Project(**project.model_dump())
-    db.add(new_project)
-    db.commit()
-    db.refresh(new_project)
-    
-    # Invalidate cache
-    r.delete("projects")
-    await notify_dashboard()
-    
-    return ProjectOut.model_validate(new_project)
-
-@app.get("/tasks", response_model=List[TaskOut])
-def get_tasks(project_id: Optional[int] = None, status: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Task)
-    if project_id:
-        query = query.filter(Task.project_id == project_id)
-    if status:
-        query = query.filter(Task.status == status)
-    tasks = query.order_by(Task.created_at.desc()).all()
-    return [TaskOut.from_orm(t) for t in tasks]
-
-@app.get("/tasks/{task_id}", response_model=TaskOut)
-def get_task(task_id: int, db: Session = Depends(get_db)):
-    db_task = db.query(Task).filter(Task.id == task_id).first()
-    if not db_task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return TaskOut.from_orm(db_task)
-
-@app.post("/tasks", response_model=TaskOut)
-async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
-    db_task = Task(**task.model_dump())
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-    r.delete("projects")
-    await notify_dashboard()
-    return TaskOut.from_orm(db_task)
-
-@app.patch("/tasks/{task_id}", response_model=TaskOut)
-async def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
-    db_task = db.query(Task).filter(Task.id == task_id).first()
-    if not db_task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    update_data = task_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_task, key, value)
-    db.commit()
-    db.refresh(db_task)
-    r.delete("projects")
-    await notify_dashboard()
-    return TaskOut.from_orm(db_task)
-
-@app.delete("/tasks/{task_id}")
-async def delete_task(task_id: int, db: Session = Depends(get_db)):
-    db_task = db.query(Task).filter(Task.id == task_id).first()
-    if not db_task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    db.delete(db_task)
-    db.commit()
-    r.delete("projects")
-    await notify_dashboard()
-    return {"message": "Task deleted"}
-
-@app.get("/daily-log", response_model=Optional[DailyLogOut])
-def get_daily_log(db: Session = Depends(get_db)):
-    # 8:00 AM CST Rollover Logic
-    today_date = get_local_date()
-    today_str = today_date.isoformat()
-    cached = r.get(f"log:{today_str}")
-    if cached:
-        return json.loads(cached)
-
-    log = db.query(DailyLog).filter(DailyLog.date == today_date).first()
-    if log:
-        log_data = DailyLogOut.model_validate(log).model_dump(mode='json')
-        r.setex(f"log:{today_str}", 60, json.dumps(log_data))
-    return log
-
-@app.post("/daily-log/briefing", response_model=BriefingOut)
-async def add_briefing(briefing: BriefingBase, db: Session = Depends(get_db)):
-    today = get_local_date()
-    log = db.query(DailyLog).filter(DailyLog.date == today).first()
-    if not log:
-        log = DailyLog(date=today)
-        db.add(log)
-        db.commit()
-        db.refresh(log)
-        
-    new_briefing = Briefing(daily_log_id=log.id, **briefing.model_dump())
-    db.add(new_briefing)
-    
-    # For backward compatibility, also update the old column if it matches slot
-    if briefing.slot == "Morning":
-        log.morning_briefing = briefing.content
-    elif briefing.slot == "Midday":
-        log.midday_briefing = briefing.content
-    elif briefing.slot == "Shutdown":
-        log.shutdown_briefing = briefing.content
-    elif briefing.slot == "Night":
-        log.nightly_reflection = briefing.content
-        
-    db.commit()
-    db.refresh(new_briefing)
-    
-    # Invalidate log cache
-    r.delete(f"log:{today.isoformat()}")
-    await notify_dashboard()
-    
-    return new_briefing
-
-@app.get("/daily-log/history", response_model=List[DailyLogOut])
-def get_daily_log_history(
-    db: Session = Depends(get_db), 
-    limit: int = 10, 
-    offset: int = 0,
-    has_morning: Optional[bool] = None,
-    has_night: Optional[bool] = None
-):
-    query = db.query(DailyLog)
-    if has_morning:
-        query = query.filter(DailyLog.morning_briefing.isnot(None))
-    if has_night:
-        query = query.filter(DailyLog.nightly_reflection.isnot(None))
-    return query.order_by(DailyLog.date.desc()).offset(offset).limit(limit).all()
-
-@app.post("/daily-log/update", response_model=DailyLogOut)
-async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db)):
-    today = get_local_date()
-    db_log = db.query(DailyLog).filter(DailyLog.date == today).first()
-    if not db_log:
-        db_log = DailyLog(date=today)
-        db.add(db_log)
-    update_data = log_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        if key != 'id' and key != 'date' and key != 'briefings': # Don't update relations via this endpoint
-            setattr(db_log, key, value)
-    db.commit()
-    db.refresh(db_log)
-    r.delete(f"log:{today.isoformat()}")
-    await notify_dashboard()
-    return db_log
+# Root redirect to docs
+@app.get("/")
+async def root():
+    return {
+        "message": "Vector Tasks API",
+        "docs": "/api/docs",
+        "version": "2.0.0"
+    }

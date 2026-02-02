@@ -21,7 +21,7 @@ export interface Task {
   priority: string;
   status: string;
   project_id: number;
-  subtasks: any[];
+  subtasks: Array<any>;
   nudge_count?: number;
   created_at: string;
   updated_at: string;
@@ -35,8 +35,8 @@ export const getDashboardData = async () => {
       api.get('/daily-log'),
     ]);
 
-    const tasks: Task[] = tasksRes.data;
-    const projects: Project[] = projectsRes.data;
+    const tasks: Array<Task> = tasksRes.data;
+    const projects: Array<Project> = projectsRes.data;
     const dailyLog = dailyRes.data;
 
     const today = new Date().toISOString().split('T')[0];

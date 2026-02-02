@@ -1,10 +1,31 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import {
-  getDashboardData,
-  updateTaskStatus,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  History,
+  LayoutGrid,
+  LogOut,
+  Moon,
+  Pause,
+  Plus,
+  Sparkles,
+  Target,
+  Trash2,
+  Trophy,
+  Wifi,
+  X,
+  Zap,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { io } from 'socket.io-client'
+import {
+  api,
   createTask,
   deleteTask,
-  api,
+  getDashboardData,
+  updateTaskStatus,
 } from '../data/dashboard-fns'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -17,27 +38,6 @@ import {
 } from '@/components/ui/table'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import {
-  Pause,
-  History,
-  Plus,
-  Trash2,
-  X,
-  Wifi,
-  Sparkles,
-  Moon,
-  Zap,
-  LogOut,
-  Target,
-  LayoutGrid,
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  Trophy,
-  CheckCircle2,
-} from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { io } from 'socket.io-client'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -46,7 +46,7 @@ export const Route = createFileRoute('/')({
       return data
     } catch (error) {
       console.error('Loader error:', error)
-      return { xp: 0, quests: [], history: [], projects: [] }
+      return { xp: 0, quests: [], history: [], projects: [], dailyLog: null }
     }
   },
   component: Dashboard,
@@ -184,7 +184,7 @@ function Dashboard() {
     : data.quests
 
   // Progress is specifically for the Targeted Objectives carousel
-  const carouselCompleted = secondaryGoals.filter((g) =>
+  const carouselCompleted = secondaryGoals.filter((g: string) =>
     isGoalCompleted(g),
   ).length
   const allCarouselDone =
@@ -338,7 +338,7 @@ function Dashboard() {
               </Badge>
             </button>
             <div className="opacity-50 mx-2 my-2 bg-border h-px" />
-            {data?.projects?.map((project: any) => (
+            {data.projects.map((project: any) => (
               <button
                 key={project.id}
                 onClick={() => setSelectedProjectId(project.id)}
