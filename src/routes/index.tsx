@@ -28,6 +28,8 @@ function Dashboard() {
   
   const [isAdding, setIsAdding] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newPriority, setNewPriority] = useState('Med')
+  const [newProjectId, setNewProjectId] = useState<number | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [timerSetupValue, setTimerSetupValue] = useState(25)
@@ -92,11 +94,12 @@ function Dashboard() {
     try {
       await createTask({
         title: newTaskTitle,
-        project_id: selectedProjectId || data.projects[0]?.id,
+        project_id: newProjectId || selectedProjectId || data.projects[0]?.id,
         status: 'Todo',
-        priority: 'Med'
+        priority: newPriority
       })
       setNewTaskTitle('')
+      setNewPriority('Med')
       setIsAdding(false)
     } catch (error) { console.error(error) }
   }
@@ -329,7 +332,10 @@ function Dashboard() {
             </div>
             
             <Button 
-              onClick={() => setIsAdding(true)} 
+              onClick={() => {
+                setNewProjectId(selectedProjectId || data.projects[0]?.id || null)
+                setIsAdding(true)
+              }} 
               disabled={isAdding} 
               className="group relative overflow-hidden font-black uppercase tracking-widest text-[10px] h-10 px-6 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-primary dark:text-black rounded-xl shadow-lg transition-all active:scale-95 border border-zinc-800 dark:border-primary/50 hover:shadow-primary/20 hover:shadow-xl"
             >
@@ -349,6 +355,28 @@ function Dashboard() {
                     <div className="flex-1 space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Operational Objective</label>
                       <input autoFocus className="w-full bg-card border-2 border-border rounded-2xl px-6 py-4 text-lg font-black focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all" placeholder="Enter mission parameters..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
+                      
+                      <div className="flex gap-3 pt-2">
+                        <select 
+                          value={newProjectId || ""} 
+                          onChange={(e) => setNewProjectId(Number(e.target.value))}
+                          className="bg-card border-2 border-border rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wide focus:border-primary outline-none"
+                        >
+                          {data.projects.map((p: any) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+
+                        <select 
+                          value={newPriority} 
+                          onChange={(e) => setNewPriority(e.target.value)}
+                          className="bg-card border-2 border-border rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wide focus:border-primary outline-none"
+                        >
+                          <option value="Low">Low Priority</option>
+                          <option value="Med">Medium Priority</option>
+                          <option value="High">High Priority</option>
+                        </select>
+                      </div>
                     </div>
                     <div className="flex gap-2 mb-1">
                       <Button type="submit" className="bg-primary text-black font-black uppercase tracking-widest text-[10px] h-14 px-8 rounded-2xl shadow-xl">Deploy</Button>
