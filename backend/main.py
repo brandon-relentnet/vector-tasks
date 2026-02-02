@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, UTC, date as py_date
+from datetime import datetime, UTC, date as py_date, timedelta
 import pytz
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends
@@ -18,7 +18,11 @@ def get_local_now():
     return datetime.now(UTC).astimezone(LOCAL_TZ)
 
 def get_local_date():
-    return get_local_now().date()
+    now = get_local_now()
+    # If it's before 8:00 AM, treat it as the previous day
+    if now.hour < 8:
+        return (now - timedelta(days=1)).date()
+    return now.date()
 
 # Database Connection
 DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
@@ -31,7 +35,7 @@ Base = declarative_base()
 # Redis Client
 r = redis.from_url(REDIS_URL, decode_responses=True)
 
-# Models
+# Models (No changes to schema)
 class Project(Base):
     __tablename__ = "projects"
     id = Column(Integer, primary_key=True, index=True)
@@ -39,7 +43,6 @@ class Project(Base):
     description = Column(Text)
     category = Column(String)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    
     tasks = relationship("Task", back_populates="project")
 
 class Task(Base):
@@ -54,7 +57,6 @@ class Task(Base):
     nudge_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
-
     project = relationship("Project", back_populates="tasks")
 
 class DailyLog(Base):
@@ -99,7 +101,6 @@ class TaskOut(TaskBase):
     created_at: datetime
     updated_at: datetime
     project_name: Optional[str] = None
-    
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
@@ -136,7 +137,6 @@ sio_app = socketio.ASGIApp(sio)
 
 # App
 app = FastAPI(title="Vector Tasks API")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -144,8 +144,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Mount Socket.IO to FastAPI
 app.mount("/socket.io", sio_app)
 
 @sio.event
@@ -156,11 +154,9 @@ async def connect(sid, environ):
 async def disconnect(sid):
     print(f"Client disconnected: {sid}")
 
-# Helper to notify dashboard of changes
 async def notify_dashboard():
     await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
 
-# Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -173,7 +169,6 @@ def get_projects(db: Session = Depends(get_db)):
     cached = r.get("projects")
     if cached:
         return json.loads(cached)
-    
     projects = db.query(Project).all()
     r.setex("projects", 300, json.dumps([ProjectOut.model_validate(p).model_dump() for p in projects]))
     return projects
@@ -185,7 +180,6 @@ def get_tasks(project_id: Optional[int] = None, status: Optional[str] = None, db
         query = query.filter(Task.project_id == project_id)
     if status:
         query = query.filter(Task.status == status)
-    
     tasks = query.order_by(Task.created_at.desc()).all()
     return [TaskOut.from_orm(t) for t in tasks]
 
@@ -211,11 +205,9 @@ async def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depen
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
     update_data = task_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_task, key, value)
-    
     db.commit()
     db.refresh(db_task)
     r.delete("projects")
@@ -235,7 +227,7 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
 
 @app.get("/daily-log", response_model=Optional[DailyLogOut])
 def get_daily_log(db: Session = Depends(get_db)):
-    # Try Redis for today's log (CST)
+    # 8:00 AM CST Rollover Logic
     today_date = get_local_date()
     today_str = today_date.isoformat()
     cached = r.get(f"log:{today_str}")
@@ -257,28 +249,23 @@ def get_daily_log_history(
     has_night: Optional[bool] = None
 ):
     query = db.query(DailyLog)
-    
     if has_morning:
         query = query.filter(DailyLog.morning_briefing.isnot(None))
     if has_night:
         query = query.filter(DailyLog.nightly_reflection.isnot(None))
-        
     return query.order_by(DailyLog.date.desc()).offset(offset).limit(limit).all()
 
 @app.post("/daily-log/update", response_model=DailyLogOut)
 async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db)):
     today = get_local_date()
     db_log = db.query(DailyLog).filter(DailyLog.date == today).first()
-    
     if not db_log:
         db_log = DailyLog(date=today)
         db.add(db_log)
-    
     update_data = log_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         if key != 'id' and key != 'date':
             setattr(db_log, key, value)
-    
     db.commit()
     db.refresh(db_log)
     r.delete(f"log:{today.isoformat()}")
