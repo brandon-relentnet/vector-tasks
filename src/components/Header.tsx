@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { io } from 'socket.io-client'
 import { getDashboardData } from '../data/dashboard-fns'
 import {
   Home,
@@ -28,7 +29,7 @@ export default function Header() {
   const [timerEnd, setTimerEnd] = useState<number | null>(null)
   const [timerActive, setTimerActive] = useState(false)
 
-  // Fetch Data (Poll every 5s)
+  // Fetch Data (Poll every 5s + Socket)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -48,7 +49,17 @@ export default function Header() {
 
     fetchData()
     const interval = setInterval(fetchData, 5000) 
-    return () => clearInterval(interval)
+
+    // Socket.IO for instant updates
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8000')
+    socket.on('update', () => {
+      fetchData()
+    })
+
+    return () => { 
+      clearInterval(interval)
+      socket.disconnect()
+    }
   }, [])
 
   // Local Ticker (Runs every 1s)
