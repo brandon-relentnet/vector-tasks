@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Info } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -85,10 +85,10 @@ function Dashboard() {
 
   const getActiveBriefing = () => {
     if (!data.dailyLog) return null;
-    if (data.dailyLog.nightly_reflection) return { type: 'night', icon: <Moon className="h-5 w-5" />, title: 'Nightly Reflection', content: data.dailyLog.nightly_reflection, accent: 'text-indigo-500' };
-    if (data.dailyLog.shutdown_briefing) return { type: 'shutdown', icon: <LogOut className="h-5 w-5" />, title: 'Shutdown Ritual', content: data.dailyLog.shutdown_briefing, accent: 'text-zinc-500' };
-    if (data.dailyLog.midday_briefing) return { type: 'midday', icon: <Zap className="h-5 w-5" />, title: 'Mid-Day Pivot', content: data.dailyLog.midday_briefing, accent: 'text-blue-500' };
-    return { type: 'morning', icon: <Sparkles className="h-5 w-5" />, title: 'Strategic Briefing', content: data.dailyLog.morning_briefing || "Awaiting intelligence briefing...", accent: 'text-amber-500' };
+    if (data.dailyLog.nightly_reflection) return { type: 'night', icon: <Moon className="h-4 w-4" />, title: 'Nightly Reflection', content: data.dailyLog.nightly_reflection, accent: 'text-indigo-400' };
+    if (data.dailyLog.shutdown_briefing) return { type: 'shutdown', icon: <LogOut className="h-4 w-4" />, title: 'Shutdown Ritual', content: data.dailyLog.shutdown_briefing, accent: 'text-zinc-400' };
+    if (data.dailyLog.midday_briefing) return { type: 'midday', icon: <Zap className="h-4 w-4" />, title: 'Mid-Day Pivot', content: data.dailyLog.midday_briefing, accent: 'text-blue-400' };
+    return { type: 'morning', icon: <Sparkles className="h-4 w-4" />, title: 'Strategic Briefing', content: data.dailyLog.morning_briefing || "Awaiting intelligence briefing...", accent: 'text-amber-400' };
   }
 
   const activeBriefing = getActiveBriefing();
@@ -100,53 +100,67 @@ function Dashboard() {
 
   return (
     <div className="h-[calc(100vh-65px)] flex flex-col overflow-hidden text-foreground">
-      {/* TOP ROW: High-Performance Strategic Briefing */}
-      <div className="bg-zinc-900 dark:bg-zinc-950 border-b border-zinc-800 shadow-2xl relative overflow-hidden">
-        {/* Subtle Background HUD Effect */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_50%,var(--primary),transparent_25%)]" />
-        </div>
-        
-        <div className="max-w-[1600px] mx-auto flex items-stretch h-32 relative z-10">
-          {/* Status Pillar */}
-          <div className="px-8 border-r border-zinc-800 flex flex-col justify-center items-center gap-1 bg-black/20">
-            <div className="h-12 w-12 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center shadow-inner">
-               <Terminal size={24} className="text-primary" />
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mt-2">Status</span>
-            <span className="text-[10px] font-black uppercase text-primary tracking-widest italic leading-none">Nominal</span>
-          </div>
-
-          {/* Main Briefing Content */}
-          <div className="flex-1 p-8 flex flex-col justify-center min-w-0">
+      {/* TOP ROW: Information HUD */}
+      <div className="bg-zinc-900 dark:bg-zinc-950 border-b border-zinc-800 shadow-2xl relative">
+        <div className="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-4 min-h-[140px]">
+          
+          {/* Briefing Section (Large) */}
+          <div className="md:col-span-3 p-8 border-r border-zinc-800 flex flex-col justify-center">
             {activeBriefing ? (
-              <div className="animate-in fade-in slide-in-from-left-4 duration-700">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`${activeBriefing.accent} animate-pulse`}>{activeBriefing.icon}</span>
+              <div className="animate-in fade-in slide-in-from-left-4 duration-500 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className={`${activeBriefing.accent} bg-zinc-800/50 p-1.5 rounded-lg border border-zinc-700/50`}>{activeBriefing.icon}</span>
                   <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">
-                    {activeBriefing.title} // Current Phase
+                    Tactical Directive // {activeBriefing.title}
                   </span>
-                  <div className="h-px w-24 bg-zinc-800 ml-2" />
                 </div>
-                <h2 className="text-3xl font-black italic tracking-tighter leading-none text-white uppercase break-words">
-                  "{activeBriefing.content}"
-                </h2>
+                <div className="relative">
+                  <h2 className="text-lg font-bold italic tracking-tight leading-relaxed text-zinc-100 max-w-4xl border-l-2 border-primary/30 pl-4">
+                    {activeBriefing.content}
+                  </h2>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-4 text-zinc-600 animate-pulse uppercase font-black tracking-widest text-xs">
-                 Initialising Strategic Link...
+                 Establishing Neural Link...
               </div>
             )}
           </div>
 
-          {/* Big Win Badge */}
-          <div className="w-80 p-8 border-l border-zinc-800 flex flex-col justify-center items-end bg-black/40">
-             <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-3 flex items-center gap-2">
-               <Target size={10} className="text-primary" /> Primary Objective
-             </span>
-             <div className="text-xl font-black text-right text-primary italic uppercase leading-tight tracking-tighter">
-               {data.dailyLog?.big_win || "AWAITING MISSION"}
-             </div>
+          {/* Core Objectives Section */}
+          <div className="p-8 flex flex-col justify-center bg-black/20">
+            <div className="space-y-4">
+               <div>
+                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5 flex items-center gap-2">
+                    <Target size={10} className="text-primary" /> Primary Objective
+                  </span>
+                  <div className="text-sm font-black text-primary italic uppercase leading-tight tracking-tight">
+                    {data.dailyLog?.big_win || "AWAITING MISSION"}
+                  </div>
+               </div>
+               
+               {data.dailyLog?.starting_nudge && activeBriefing?.type === 'morning' && (
+                 <div className="pt-2 border-t border-zinc-800">
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5 flex items-center gap-2">
+                      <Zap size={10} className="text-amber-400" /> Starting Nudge
+                    </span>
+                    <div className="text-[10px] font-bold text-zinc-300 uppercase leading-tight">
+                      {data.dailyLog.starting_nudge}
+                    </div>
+                 </div>
+               )}
+
+               {activeBriefing?.type === 'night' && data.dailyLog?.goals_for_tomorrow?.length > 0 && (
+                 <div className="pt-2 border-t border-zinc-800">
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1.5">Next Phase Targets</span>
+                    <div className="flex gap-1">
+                      {data.dailyLog.goals_for_tomorrow.slice(0, 3).map((_, i) => (
+                        <div key={i} className="h-1 flex-1 bg-primary/30 rounded-full" />
+                      ))}
+                    </div>
+                 </div>
+               )}
+            </div>
           </div>
         </div>
       </div>
@@ -249,7 +263,7 @@ function Dashboard() {
                       <input autoFocus className="w-full bg-card border-2 border-border rounded-2xl px-6 py-4 text-lg font-black focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all" placeholder="Enter mission parameters..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
                     </div>
                     <div className="flex gap-2 mb-1">
-                      <Button type="submit" className="bg-primary text-black font-black uppercase tracking-widest text-[10px] h-14 px-8 rounded-2xl shadow-xl">Deploy</Button>
+                      <Button type="submit" className="bg-primary text-zinc-900 font-black uppercase tracking-widest text-[10px] h-14 px-8 rounded-2xl shadow-xl">Deploy</Button>
                       <Button type="button" variant="ghost" className="h-14 w-14 rounded-2xl text-muted-foreground hover:bg-rose-50 hover:text-rose-500" onClick={() => setIsAdding(false)}><X size={24} /></Button>
                     </div>
                   </form>
