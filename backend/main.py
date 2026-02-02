@@ -52,6 +52,7 @@ class DailyLog(Base):
     shutdown_briefing = Column(Text)
     nightly_reflection = Column(Text)
     goals_for_tomorrow = Column(JSON, default=[])
+    timer_end = Column(DateTime(timezone=True), nullable=True)
     reflections = Column(Text)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
@@ -87,7 +88,6 @@ class TaskOut(TaskBase):
 
     @classmethod
     def from_orm(cls, obj):
-        # Overriding to inject project_name from relationship
         instance = super().from_orm(obj)
         if obj.project:
             instance.project_name = obj.project.name
@@ -110,6 +110,7 @@ class DailyLogOut(BaseModel):
     shutdown_briefing: Optional[str] = None
     nightly_reflection: Optional[str] = None
     goals_for_tomorrow: List[str] = []
+    timer_end: Optional[datetime] = None
     reflections: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 

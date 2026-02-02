@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, WifiOff, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 
@@ -28,6 +28,32 @@ function Dashboard() {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
+  const [timeLeft, setTimeLeft] = useState<string | null>(null)
+
+  // Timer logic
+  useEffect(() => {
+    if (!data.dailyLog?.timer_end) {
+      setTimeLeft(null)
+      return
+    }
+
+    const timer = setInterval(() => {
+      const end = new Date(data.dailyLog.timer_end).getTime()
+      const now = new Date().getTime()
+      const distance = end - now
+
+      if (distance < 0) {
+        clearInterval(timer)
+        setTimeLeft("00:00")
+      } else {
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+        setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+      }
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [data.dailyLog?.timer_end])
 
   useEffect(() => {
     const socket = io('http://localhost:8000')
@@ -89,7 +115,7 @@ function Dashboard() {
       <header className="flex justify-between items-center border-b pb-6 border-border">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-4xl font-black tracking-tighter uppercase italic">Vector Command</h1>
+            <h1 className="text-4xl font-black tracking-tighter uppercase italic text-zinc-900 dark:text-zinc-50">Vector Command</h1>
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border`}>
               <div className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-primary animate-pulse shadow-[0_0_5px_var(--primary)]' : 'bg-rose-500'}`} />
               {isConnected ? 'Link Active' : 'Offline'}
@@ -143,7 +169,7 @@ function Dashboard() {
                     <ul className="space-y-4">
                       {data.dailyLog.goals_for_tomorrow.map((goal: string, i: number) => (
                         <li key={i} className="flex gap-3 text-sm font-bold items-start">
-                          <span className="bg-foreground text-background h-5 w-5 rounded flex items-center justify-center shrink-0 text-[10px] font-black">{i + 1}</span> 
+                          <span className="bg-zinc-900 dark:bg-zinc-950 text-white h-5 w-5 rounded flex items-center justify-center shrink-0 text-[10px] font-black">{i + 1}</span> 
                           <span className="text-foreground italic leading-snug">{goal}</span>
                         </li>
                       ))}
@@ -158,17 +184,24 @@ function Dashboard() {
         <div className="space-y-6">
           <Card className="border-2 border-zinc-900 bg-zinc-900 dark:bg-zinc-950 shadow-xl overflow-hidden relative text-white">
             <div className="absolute top-0 right-0 p-3 opacity-5">
-              <Target className="h-16 w-16 text-white" />
+              {timeLeft ? <Hourglass className="h-16 w-16 text-primary animate-pulse" /> : <Clock className="h-16 w-16 text-white" />}
             </div>
             <CardHeader className="pb-1 relative z-10">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                <Clock className="h-3 w-3" /> Mission Priority
+                {timeLeft ? <Hourglass className="h-3 w-3 text-primary" /> : <Clock className="h-3 w-3" />}
+                {timeLeft ? "Mission Timer" : "Deployment Clock"}
               </CardTitle>
             </CardHeader>
             <CardContent className="relative z-10">
-              <div className="text-2xl font-black tracking-tighter text-primary uppercase italic leading-tight">
-                {data.dailyLog?.big_win || "Awaiting Orders"}
-              </div>
+              {timeLeft ? (
+                <div className="text-5xl font-black tracking-tighter text-primary italic leading-none py-2 font-mono">
+                  {timeLeft}
+                </div>
+              ) : (
+                <div className="text-2xl font-black tracking-tighter text-zinc-400 uppercase italic leading-tight">
+                  No Active Timer
+                </div>
+              )}
             </CardContent>
           </Card>
 
