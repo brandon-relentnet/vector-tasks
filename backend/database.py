@@ -27,8 +27,13 @@ cache_service = CacheService(redis_client)
 
 # Socket.IO setup - allow CORS from frontend
 import os
-frontend_origin = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")[0]
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=[frontend_origin])
+
+# Parse CORS_ORIGINS - handle duplicates and whitespace
+cors_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+origins = list(dict.fromkeys(o.strip() for o in cors_env.split(",") if o.strip()))
+print(f"[Socket] CORS origins: {origins}")
+
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=origins)
 sio_app = socketio.ASGIApp(sio)
 
 @sio.event

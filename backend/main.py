@@ -65,8 +65,9 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded)
         }
     )
 
-# CORS Configuration
-origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+# CORS Configuration - handle duplicates and whitespace
+cors_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+origins = list(dict.fromkeys(o.strip() for o in cors_env.split(",") if o.strip()))
 
 app.add_middleware(
     CORSMiddleware,
