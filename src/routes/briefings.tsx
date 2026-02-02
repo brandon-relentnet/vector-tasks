@@ -102,7 +102,7 @@ function BriefingsPage() {
                 <div className="h-px flex-1 bg-zinc-100" />
               </div>
 
-              <Card className={`border-2 overflow-hidden shadow-lg transition-all rounded-2xl ${
+              <Card className={`border-2 overflow-hidden shadow-lg rounded-2xl ${
                 activeTab === 'night' ? 'border-indigo-200 bg-indigo-50/20' :
                 activeTab === 'shutdown' ? 'border-zinc-300 bg-zinc-50' :
                 activeTab === 'midday' ? 'border-blue-200 bg-blue-50/20' :

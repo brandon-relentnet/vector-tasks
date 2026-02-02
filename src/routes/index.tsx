@@ -168,9 +168,9 @@ function Dashboard() {
         )}
 
         <div className="space-y-6">
-          <Card className="border-2 border-zinc-900 bg-zinc-900 text-white shadow-xl overflow-hidden relative">
+          <Card className="border-2 border-zinc-900 bg-zinc-900 shadow-xl overflow-hidden relative">
             <div className="absolute top-0 right-0 p-3 opacity-10">
-              <Target className="h-16 w-16" />
+              <Target className="h-16 w-16 text-white" />
             </div>
             <CardHeader className="pb-1 relative z-10">
               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
