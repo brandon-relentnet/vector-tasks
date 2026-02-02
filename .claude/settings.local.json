@@ -5,7 +5,12 @@
       "Bash(npx eslint:*)",
       "Bash(npm run lint)",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRefactor: Modularize backend API structure and improve robustness\n\n- Split monolithic main.py into models/, schemas/, routes/, services/\n- Add centralized cache management via CacheService\n- Implement structured error handling with APIError class\n- Add pagination to /tasks and /projects endpoints\n- Fix DailyLogUpdate schema \\(was incorrectly using DailyLogOut\\)\n- Prevent N+1 queries with eager loading via joinedload\n- Add rate limiting \\(slowapi\\) with 100 req/min default\n- Add request logging middleware with timing\n- Improve OpenAPI docs with versioning at /api/v1/\n- Fix linting errors and unused imports\n- Update CLAUDE.md with new commands\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(source:*)",
+      "Bash(uvicorn:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)"
     ]
   }
 }

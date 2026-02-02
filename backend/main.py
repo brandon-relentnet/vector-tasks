@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy import text
-from slowapi import Limiter, RequestRateLimitExceeded
+from slowapi import Limiter
 from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from database import sio_app, engine
 from exceptions import api_exception_handler, http_exception_handler, validation_exception_handler, general_exception_handler
@@ -61,8 +62,8 @@ app = FastAPI(
 app.state.limiter = limiter
 
 # Exception handler for rate limiting
-@app.exception_handler(RequestRateLimitExceeded)
-async def rate_limit_exception_handler(request: Request, exc: RequestRateLimitExceeded):
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
         content={
