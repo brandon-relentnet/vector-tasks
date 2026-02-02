@@ -96,7 +96,7 @@ class ProjectOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 # Socket.IO setup
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=[])
 sio_app = socketio.ASGIApp(sio)
 
 # App
@@ -104,14 +104,14 @@ app = FastAPI(title="Vector Tasks API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Mount Socket.IO to FastAPI
-app.mount("/ws", sio_app)
+app.mount("/socket.io", sio_app)
 
 @sio.event
 async def connect(sid, environ):

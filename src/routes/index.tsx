@@ -31,9 +31,7 @@ function Dashboard() {
 
   // Real-time synchronization
   useEffect(() => {
-    const socket = io('http://localhost:8000', {
-      path: '/ws/socket.io'
-    })
+    const socket = io('http://localhost:8000')
 
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
