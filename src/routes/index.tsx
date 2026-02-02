@@ -355,6 +355,7 @@ function Dashboard() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full space-y-8">
+            {/* New Objective Form - Tactical Flat Layout */}
             {isAdding && (
               <form onSubmit={handleCreateTask} className="pb-8 border-b border-dashed border-zinc-800 flex flex-col gap-6 animate-in fade-in slide-in-from-top-2 duration-300 text-foreground group/form">
                 
