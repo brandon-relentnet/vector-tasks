@@ -209,8 +209,21 @@ def get_daily_log(db: Session = Depends(get_db)):
     return db.query(DailyLog).filter(DailyLog.date == today).first()
 
 @app.get("/daily-log/history", response_model=List[DailyLogOut])
-def get_daily_log_history(db: Session = Depends(get_db)):
-    return db.query(DailyLog).order_by(DailyLog.date.desc()).all()
+def get_daily_log_history(
+    db: Session = Depends(get_db), 
+    limit: int = 10, 
+    offset: int = 0,
+    has_morning: Optional[bool] = None,
+    has_night: Optional[bool] = None
+):
+    query = db.query(DailyLog)
+    
+    if has_morning:
+        query = query.filter(DailyLog.morning_briefing.isnot(None))
+    if has_night:
+        query = query.filter(DailyLog.nightly_reflection.isnot(None))
+        
+    return query.order_by(DailyLog.date.desc()).offset(offset).limit(limit).all()
 
 @app.post("/daily-log/update", response_model=DailyLogOut)
 async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db)):

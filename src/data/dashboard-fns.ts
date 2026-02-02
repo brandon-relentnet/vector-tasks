@@ -78,9 +78,9 @@ export const getDashboardData = async () => {
   }
 };
 
-export const getBriefingHistory = async () => {
+export const getBriefingHistory = async (params?: { limit?: number; offset?: number; has_morning?: boolean; has_night?: boolean }) => {
   try {
-    const response = await api.get('/daily-log/history');
+    const response = await api.get('/daily-log/history', { params });
     return response.data;
   } catch (error) {
     console.error('History API Error:', error);
