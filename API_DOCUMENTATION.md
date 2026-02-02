@@ -100,6 +100,18 @@ Remove a task permanently.
 Retrieve all available Sectors.
 *   **Response:** `List[Project]`
 
+#### `POST /projects`
+Create a new Sector (Project).
+*   **Body:**
+    ```json
+    {
+      "name": "Vector",
+      "description": "Main operations",
+      "category": "Operations"
+    }
+    ```
+*   **Response:** `Project`
+
 ### Daily Operations (Logs)
 
 #### `GET /daily-log`

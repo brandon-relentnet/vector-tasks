@@ -126,6 +126,11 @@ class ProjectOut(BaseModel):
     category: Optional[str]
     model_config = ConfigDict(from_attributes=True)
 
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    category: Optional[str] = "General"
+
 class DailyLogOut(BaseModel):
     id: int
     date: py_date
@@ -185,6 +190,23 @@ def get_projects(db: Session = Depends(get_db)):
     projects = db.query(Project).all()
     r.setex("projects", 300, json.dumps([ProjectOut.model_validate(p).model_dump() for p in projects]))
     return projects
+
+@app.post("/projects", response_model=ProjectOut)
+async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
+    db_project = db.query(Project).filter(Project.name == project.name).first()
+    if db_project:
+        raise HTTPException(status_code=400, detail="Project already exists")
+    
+    new_project = Project(**project.model_dump())
+    db.add(new_project)
+    db.commit()
+    db.refresh(new_project)
+    
+    # Invalidate cache
+    r.delete("projects")
+    await notify_dashboard()
+    
+    return ProjectOut.model_validate(new_project)
 
 @app.get("/tasks", response_model=List[TaskOut])
 def get_tasks(project_id: Optional[int] = None, status: Optional[str] = None, db: Session = Depends(get_db)):
