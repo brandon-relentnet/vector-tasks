@@ -132,7 +132,10 @@ function Dashboard() {
         <div className="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-4 min-h-[140px]">
           
           {/* Briefing Section (Large) */}
-          <div className="md:col-span-3 p-8 border-r border-zinc-800 flex flex-col justify-center">
+          <div className="md:col-span-3 p-8 border-r border-zinc-800 flex flex-col justify-center bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-900/50 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+              <Sparkles size={120} />
+            </div>
             {activeBriefing ? (
               <div className="animate-in fade-in slide-in-from-left-4 duration-500 space-y-3">
                 <div className="flex items-center gap-3">
@@ -203,9 +206,14 @@ function Dashboard() {
                 </div>
               </div>
             ) : (
-               <div className="text-center space-y-2 opacity-30">
-                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 block">No Secondary Targets</span>
-                  <div className="h-px w-full bg-zinc-800" />
+               <div className="flex flex-col items-center justify-center text-center space-y-3 opacity-40 py-2">
+                  <div className="h-8 w-8 rounded-full border border-dashed border-zinc-500 flex items-center justify-center">
+                    <Target size={14} className="text-zinc-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400 block">No Targets</span>
+                    <span className="text-[8px] font-bold uppercase tracking-wide text-zinc-600 block">System Standing By</span>
+                  </div>
                </div>
             )}
           </div>
@@ -214,7 +222,7 @@ function Dashboard() {
 
       <div className="flex-1 flex overflow-hidden bg-background">
         {/* Project Navigation Sidebar */}
-        <div className="w-64 border-r border-border bg-card flex flex-col shadow-[1px_0_10px_rgba(0,0,0,0.02)]">
+        <div className="hidden md:flex w-64 border-r border-border bg-card flex-col shadow-[1px_0_10px_rgba(0,0,0,0.02)]">
           <div className="p-6 flex items-center justify-between">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
               <LayoutGrid size={12} /> Sectors
@@ -290,11 +298,26 @@ function Dashboard() {
         {/* Task Grid / Workspace */}
         <div className="flex-1 flex flex-col overflow-hidden bg-zinc-50/20 dark:bg-zinc-950/10">
           {/* Work Zone Header */}
-          <div className="p-6 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between shrink-0">
-            <div className="flex-1 flex items-center gap-8">
-              <h2 className="text-xl font-black uppercase tracking-tight italic text-foreground">
-                {selectedProjectId ? data.projects.find((p:any)=>p.id === selectedProjectId)?.name : "Active Operations"}
-              </h2>
+          <div className="p-6 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between shrink-0 sticky top-0 z-30">
+            <div className="flex-1 flex items-center gap-4 md:gap-8 overflow-hidden">
+              <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-8 overflow-hidden">
+                <h2 className="text-xl font-black uppercase tracking-tight italic text-foreground truncate">
+                  {selectedProjectId ? data.projects.find((p:any)=>p.id === selectedProjectId)?.name : "Active Operations"}
+                </h2>
+                
+                {/* Mobile Project Selector */}
+                <div className="md:hidden relative">
+                  <select 
+                    value={selectedProjectId || ""} 
+                    onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : null)}
+                    className="appearance-none bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-widest py-1.5 pl-3 pr-8 rounded-lg w-full max-w-[200px]"
+                  >
+                    <option value="">Master Feed</option>
+                    {data.projects.map((p:any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <ChevronRight size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 rotate-90 pointer-events-none" />
+                </div>
+              </div>
               
               {/* Primary Objective Banner inside Work Zone */}
               {primaryObjective && (
@@ -380,7 +403,17 @@ function Dashboard() {
                       </TableRow>
                     )) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-32 text-center text-muted-foreground font-black uppercase tracking-[0.2em] italic opacity-30">Sector Clear // No Active Quests</TableCell>
+                        <TableCell colSpan={5} className="py-32">
+                          <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground opacity-30">
+                            <div className="h-16 w-16 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+                              <CheckCircle2 size={32} />
+                            </div>
+                            <div className="text-center">
+                              <p className="font-black uppercase tracking-[0.3em] italic text-lg">Sector Clear</p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest mt-1">No Active Hostiles</p>
+                            </div>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
