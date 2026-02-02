@@ -354,8 +354,7 @@ function Dashboard() {
 
           <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full space-y-8">
             {isAdding && (
-              <form onSubmit={handleCreateTask} className="rounded-3xl border-2 border-primary/20 bg-zinc-900/80 dark:bg-black/60 backdrop-blur-xl p-8 flex flex-col gap-6 animate-in fade-in slide-in-from-top-6 duration-500 text-foreground relative overflow-hidden group/form shadow-2xl">
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse" />
+              <form onSubmit={handleCreateTask} className="pb-8 border-b border-dashed border-zinc-800 flex flex-col gap-6 animate-in fade-in slide-in-from-top-2 duration-300 text-foreground group/form">
                 
                 {/* Top Row: Input and Action Buttons */}
                 <div className="flex flex-col md:flex-row gap-6 items-start md:items-end">
@@ -386,7 +385,7 @@ function Dashboard() {
                         </div>
                       )}
                     </Button>
-                    <Button type="button" variant="ghost" className="h-14 w-14 rounded-xl text-zinc-600 hover:bg-rose-950/30 hover:text-rose-500 hover:border-rose-900 border border-transparent transition-all" onClick={() => setIsAdding(false)}>
+                    <Button type="button" variant="ghost" className="h-14 w-14 rounded-xl text-zinc-600 hover:bg-zinc-900 hover:text-white border border-transparent transition-all" onClick={() => setIsAdding(false)}>
                       <X size={20} />
                     </Button>
                   </div>
@@ -397,7 +396,7 @@ function Dashboard() {
                   {/* Priority Toggle */}
                   <div className="space-y-1.5">
                     <span className="text-[9px] font-mono text-zinc-500 block uppercase tracking-wider">Threat Level</span>
-                    <div className="flex bg-zinc-950/50 p-1 rounded-lg border border-zinc-800">
+                    <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-zinc-800">
                       {['Low', 'Med', 'High'].map((p) => (
                         <button
                           key={p}
@@ -405,9 +404,9 @@ function Dashboard() {
                           onClick={() => setNewPriority(p)}
                           className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
                             newPriority === p 
-                              ? p === 'High' ? 'bg-rose-500 text-white shadow-lg shadow-rose-900/20' 
-                              : p === 'Med' ? 'bg-primary text-black shadow-lg shadow-primary/20' 
-                              : 'bg-zinc-700 text-white'
+                              ? p === 'High' ? 'bg-primary text-black shadow-lg shadow-primary/20' 
+                              : p === 'Med' ? 'bg-zinc-700 text-white' 
+                              : 'border border-zinc-600 text-zinc-400 bg-transparent'
                               : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800'
                           }`}
                         >
@@ -451,17 +450,21 @@ function Dashboard() {
                     <TableRow key={quest.id} className="group hover:bg-zinc-900/30 transition-all border-b border-zinc-800/50 last:border-0 h-20">
                       <TableCell className="pl-0 py-4">
                         <div className="flex items-center gap-4">
-                          <div className={`h-1.5 w-1.5 rounded-full ${quest.priority === 'High' ? 'bg-rose-500' : 'bg-primary'}`} />
+                          <div className={`h-1.5 w-1.5 rounded-full ${
+                            quest.priority === 'High' ? 'bg-primary shadow-[0_0_8px_var(--primary)]' 
+                            : quest.priority === 'Med' ? 'bg-zinc-500' 
+                            : 'border border-zinc-600 bg-transparent'
+                          }`} />
                           <p className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">{quest.title}</p>
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className={`inline-flex font-black text-[9px] uppercase tracking-widest px-2 py-1 rounded border ${
                           quest.priority === 'High' 
-                            ? 'border-rose-900/50 text-rose-500 bg-rose-950/10' 
-                            : quest.priority === 'Low'
-                            ? 'border-zinc-800 text-zinc-500'
-                            : 'border-primary/20 text-primary bg-primary/5'
+                            ? 'border-primary bg-primary text-black' 
+                            : quest.priority === 'Med'
+                            ? 'border-zinc-700 bg-zinc-800 text-zinc-300'
+                            : 'border-zinc-800 text-zinc-600 bg-transparent'
                         }`}>
                           {quest.priority}
                         </span>
@@ -501,23 +504,6 @@ function Dashboard() {
                       </TableCell>
                     </TableRow>
                   )) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-24">
-                        <div className="flex flex-col items-center justify-center gap-4 text-zinc-700 opacity-50">
-                          <div className="h-12 w-12 rounded-full border border-dashed border-zinc-700 flex items-center justify-center">
-                            <CheckCircle2 size={20} />
-                          </div>
-                          <div className="text-center">
-                            <p className="font-black uppercase tracking-[0.2em] text-sm">Sector Clear</p>
-                            <p className="text-[9px] font-mono mt-1">NO ACTIVE HOSTILES</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
 
             {data.history && data.history.length > 0 && (
               <div className="mt-16 space-y-6 pb-20">
