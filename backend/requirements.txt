@@ -5,3 +5,6 @@ sqlalchemy
 pydantic
 python-dotenv
 pydantic-settings
+pytz
+redis
+python-socketio
