@@ -7,13 +7,19 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime, Date, JSON
 from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
 import socketio
+import redis
+import json
 
 # Database Connection
 DATABASE_URL = "postgresql://postgres:JrmR0pSy1U4kcJ6EzeBAj6YCpuTAUKmS2t7JyhJOBnMvNexQyBdFOM6AhTXQhFFM@5.161.88.222:39271/postgres"
+REDIS_URL = "redis://5.161.88.222:38272"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+# Redis Client
+r = redis.from_url(REDIS_URL, decode_responses=True)
 
 # Models
 class Project(Base):
@@ -142,6 +148,7 @@ async def disconnect(sid):
 
 # Helper to notify dashboard of changes
 async def notify_dashboard():
+    # Cache invalidation for key data could happen here in Redis if needed
     await sio.emit('update', {'timestamp': datetime.now(UTC).isoformat()})
 
 # Dependency
@@ -154,7 +161,14 @@ def get_db():
 
 @app.get("/projects", response_model=List[ProjectOut])
 def get_projects(db: Session = Depends(get_db)):
-    return db.query(Project).all()
+    # Try Redis first
+    cached = r.get("projects")
+    if cached:
+        return json.loads(cached)
+    
+    projects = db.query(Project).all()
+    r.setex("projects", 300, json.dumps([ProjectOut.model_validate(p).model_dump() for p in projects]))
+    return projects
 
 @app.get("/tasks", response_model=List[TaskOut])
 def get_tasks(project_id: Optional[int] = None, status: Optional[str] = None, db: Session = Depends(get_db)):
@@ -180,6 +194,7 @@ async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+    r.delete("projects") # Invalidate projects count cache
     await notify_dashboard()
     return TaskOut.from_orm(db_task)
 
@@ -195,6 +210,7 @@ async def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depen
     
     db.commit()
     db.refresh(db_task)
+    r.delete("projects")
     await notify_dashboard()
     return TaskOut.from_orm(db_task)
 
@@ -205,13 +221,23 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task not found")
     db.delete(db_task)
     db.commit()
+    r.delete("projects")
     await notify_dashboard()
     return {"message": "Task deleted"}
 
 @app.get("/daily-log", response_model=Optional[DailyLogOut])
 def get_daily_log(db: Session = Depends(get_db)):
+    # Try Redis for today's log
+    today_str = datetime.now(UTC).date().isoformat()
+    cached = r.get(f"log:{today_str}")
+    if cached:
+        return json.loads(cached)
+
     today = datetime.now(UTC).date()
-    return db.query(DailyLog).filter(DailyLog.date == today).first()
+    log = db.query(DailyLog).filter(DailyLog.date == today).first()
+    if log:
+        r.setex(f"log:{today_str}", 60, json.dumps(DailyLogOut.model_validate(log).model_dump(mode='json')))
+    return log
 
 @app.get("/daily-log/history", response_model=List[DailyLogOut])
 def get_daily_log_history(
@@ -246,5 +272,9 @@ async def update_daily_log(log_update: DailyLogOut, db: Session = Depends(get_db
     
     db.commit()
     db.refresh(db_log)
+    
+    # Invalidate cache
+    r.delete(f"log:{today.isoformat()}")
+    
     await notify_dashboard()
     return db_log
