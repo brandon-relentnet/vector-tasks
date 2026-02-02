@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Check, ChevronRight, ChevronLeft, Trophy, PartyPopper } from 'lucide-react'
+import { Play, CheckCircle2, RotateCcw, Pause, History, Plus, Trash2, X, Wifi, Sparkles, Moon, Zap, LogOut, Clock, Target, Hourglass, Square, Minus, LayoutGrid, Terminal, Check, ChevronRight, ChevronLeft, Trophy } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import axios from 'axios'
@@ -33,7 +33,6 @@ function Dashboard() {
   const [timerSetupValue, setTimerSetupValue] = useState(25)
   const [localTimerEnd, setLocalTimerEnd] = useState<string | null>(null)
   
-  // Local state to track which goal we are currently looking at in the carousel
   const [goalIndex, setGoalIndex] = useState(0)
 
   useEffect(() => {
@@ -62,24 +61,23 @@ function Dashboard() {
     }
   }
 
-  // Determine all 3 potential goals (Big Win + Goals for Tomorrow)
-  const allGoals = [
-    data.dailyLog?.big_win,
-    ...(data.dailyLog?.goals_for_tomorrow || [])
-  ].filter(Boolean);
-
+  // OBJECTIVE LOGIC
+  // Big Win is always the primary focus for the current day.
+  // Targeted Objectives (goals_for_tomorrow) are the "slides" in the carousel.
+  const primaryObjective = data.dailyLog?.big_win;
+  const secondaryGoals = data.dailyLog?.goals_for_tomorrow || [];
+  
   const completedGoals = data.dailyLog?.reflections?.split('|').filter(Boolean) || [];
   const isGoalCompleted = (goal: string) => completedGoals.includes(goal);
 
   const markGoalSuccess = async (goal: string) => {
     if (!data.dailyLog) return;
-    
     try {
       const newCompleted = [...completedGoals, goal].join('|');
       await axios.post('http://localhost:8000/daily-log/update', {
         id: data.dailyLog.id,
         date: data.dailyLog.date,
-        reflections: newCompleted // Overloading reflections column temporarily to track completions
+        reflections: newCompleted
       })
     } catch (e) { console.error(e) }
   }
@@ -122,8 +120,10 @@ function Dashboard() {
     : data.quests;
 
   const isTimerActive = !!(localTimerEnd || data.dailyLog?.timer_end);
-  const totalCompleted = allGoals.filter(g => isGoalCompleted(g)).length;
-  const allDone = totalCompleted >= 3 && allGoals.length > 0;
+  
+  // Progress is specifically for the Targeted Objectives carousel
+  const carouselCompleted = secondaryGoals.filter(g => isGoalCompleted(g)).length;
+  const allCarouselDone = carouselCompleted >= secondaryGoals.length && secondaryGoals.length > 0;
 
   return (
     <div className="h-[calc(100vh-65px)] flex flex-col overflow-hidden text-foreground">
@@ -138,7 +138,7 @@ function Dashboard() {
                 <div className="flex items-center gap-3">
                   <span className={`${activeBriefing.accent} bg-zinc-800/50 p-1.5 rounded-lg border border-zinc-700/50`}>{activeBriefing.icon}</span>
                   <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">
-                    Tactical Directive // {activeBriefing.title}
+                    Directive // {activeBriefing.title}
                   </span>
                 </div>
                 <div className="relative">
@@ -149,41 +149,41 @@ function Dashboard() {
               </div>
             ) : (
               <div className="flex items-center gap-4 text-zinc-600 animate-pulse uppercase font-black tracking-widest text-xs">
-                 Establishing Neural Link...
+                 Connecting to Command...
               </div>
             )}
           </div>
 
-          {/* Goal Carousel Section */}
-          <div className="p-8 flex flex-col justify-center bg-black/20 group/win relative overflow-hidden">
-            {allDone ? (
+          {/* Targeted Objectives Carousel (Tomorrow's Targets collected tonight, shown tomorrow) */}
+          <div className="p-8 flex flex-col justify-center bg-black/20 group/win relative overflow-hidden border-l border-zinc-800/50">
+            {allCarouselDone ? (
               <div className="flex flex-col items-center justify-center text-center space-y-2 animate-in zoom-in-95 duration-500">
                  <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center border border-primary/30 shadow-[0_0_15px_rgba(255,190,0,0.3)]">
                    <Trophy size={20} className="text-primary" />
                  </div>
-                 <h3 className="text-primary font-black uppercase italic tracking-tighter text-base">All Objectives Secured</h3>
-                 <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none">Operational peak achieved today.</p>
+                 <h3 className="text-primary font-black uppercase italic tracking-tighter text-base">Campaign Complete</h3>
+                 <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none">All targets secured.</p>
               </div>
-            ) : (
+            ) : secondaryGoals.length > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 flex items-center gap-2">
                         <Target size={10} className="text-primary" /> 
-                        Objective {goalIndex + 1}/{allGoals.length}
+                        Target {goalIndex + 1}/{secondaryGoals.length}
                     </span>
                     <div className="flex gap-1">
                         <button onClick={() => setGoalIndex(prev => Math.max(0, prev - 1))} className="text-zinc-600 hover:text-white transition-colors disabled:opacity-10" disabled={goalIndex === 0}><ChevronLeft size={14}/></button>
-                        <button onClick={() => setGoalIndex(prev => Math.min(allGoals.length - 1, prev + 1))} className="text-zinc-600 hover:text-white transition-colors disabled:opacity-10" disabled={goalIndex === allGoals.length - 1}><ChevronRight size={14}/></button>
+                        <button onClick={() => setGoalIndex(prev => Math.min(secondaryGoals.length - 1, prev + 1))} className="text-zinc-600 hover:text-white transition-colors disabled:opacity-10" disabled={goalIndex === secondaryGoals.length - 1}><ChevronRight size={14}/></button>
                     </div>
                 </div>
 
                 <div className="relative min-h-[40px] flex items-center pr-10 group/item">
-                    <div className={`text-sm font-black italic uppercase leading-tight tracking-tight transition-all duration-300 ${isGoalCompleted(allGoals[goalIndex]) ? 'text-zinc-600 line-through opacity-50' : 'text-primary'}`}>
-                        {allGoals[goalIndex] || "AWAITING MISSION"}
+                    <div className={`text-sm font-black italic uppercase leading-tight tracking-tight transition-all duration-300 ${isGoalCompleted(secondaryGoals[goalIndex]) ? 'text-zinc-600 line-through opacity-50' : 'text-primary'}`}>
+                        {secondaryGoals[goalIndex]}
                     </div>
-                    {!isGoalCompleted(allGoals[goalIndex]) && allGoals[goalIndex] && (
+                    {!isGoalCompleted(secondaryGoals[goalIndex]) && (
                         <button 
-                            onClick={() => markGoalSuccess(allGoals[goalIndex])}
+                            onClick={() => markGoalSuccess(secondaryGoals[goalIndex])}
                             className="absolute right-0 h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary opacity-0 group-hover/item:opacity-100 transition-all hover:bg-primary hover:text-black shadow-lg"
                         >
                             <Check size={16} strokeWidth={3} />
@@ -193,15 +193,20 @@ function Dashboard() {
 
                 <div className="pt-2 border-t border-zinc-800">
                     <div className="flex gap-1.5">
-                      {allGoals.map((g, i) => (
+                      {secondaryGoals.map((g: string, i: number) => (
                         <div 
                             key={i} 
-                            className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${isGoalCompleted(g) ? 'bg-primary shadow-[0_0_8px_var(--primary)]' : 'bg-zinc-800'}`} 
+                            className={`h-1 flex-1 rounded-full transition-all duration-700 ${isGoalCompleted(g) ? 'bg-primary shadow-[0_0_8px_var(--primary)]' : 'bg-zinc-800'}`} 
                         />
                       ))}
                     </div>
                 </div>
               </div>
+            ) : (
+               <div className="text-center space-y-2 opacity-30">
+                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-500 block">No Secondary Targets</span>
+                  <div className="h-px w-full bg-zinc-800" />
+               </div>
             )}
           </div>
         </div>
@@ -240,7 +245,7 @@ function Dashboard() {
             ))}
           </div>
 
-          {/* Timer Control Sidebar Module */}
+          {/* Timer Module in Sidebar */}
           {!isTimerActive && (
             <div className="p-4 mx-4 mb-4 bg-zinc-900 dark:bg-zinc-950 rounded-2xl border border-zinc-800 shadow-xl space-y-4 animate-in fade-in slide-in-from-bottom-2">
               <div className="flex items-center justify-between">
@@ -284,12 +289,22 @@ function Dashboard() {
 
         {/* Task Grid / Workspace */}
         <div className="flex-1 flex flex-col overflow-hidden bg-zinc-50/20 dark:bg-zinc-950/10">
-          <div className="p-6 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          {/* Work Zone Header */}
+          <div className="p-6 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between shrink-0">
+            <div className="flex-1 flex items-center gap-8">
               <h2 className="text-xl font-black uppercase tracking-tight italic text-foreground">
                 {selectedProjectId ? data.projects.find((p:any)=>p.id === selectedProjectId)?.name : "Active Operations"}
               </h2>
+              
+              {/* Primary Objective Banner inside Work Zone */}
+              {primaryObjective && (
+                <div className="hidden md:flex items-center gap-3 bg-primary/10 border border-primary/20 px-4 py-1.5 rounded-full animate-in fade-in slide-in-from-left-2">
+                   <Target size={14} className="text-primary" />
+                   <span className="text-[10px] font-black uppercase tracking-widest text-primary italic leading-none">{primaryObjective}</span>
+                </div>
+              )}
             </div>
+            
             <Button onClick={() => setIsAdding(true)} disabled={isAdding} className="font-black uppercase tracking-widest text-[10px] h-10 px-6 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-primary dark:text-black rounded-xl shadow-lg transition-all active:scale-95">
               <Plus className="h-4 w-4 mr-2 text-primary" /> New Objective
             </Button>
@@ -365,7 +380,7 @@ function Dashboard() {
                       </TableRow>
                     )) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-32 text-center text-muted-foreground font-black uppercase tracking-[0.2em] italic opacity-30">All Objectives Secured</TableCell>
+                        <TableCell colSpan={5} className="py-32 text-center text-muted-foreground font-black uppercase tracking-[0.2em] italic opacity-30">Sector Clear // No Active Quests</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
