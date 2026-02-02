@@ -94,7 +94,7 @@ function Dashboard() {
     if (!data.dailyLog) return
     try {
       const newCompleted = [...completedGoals, goal].join('|')
-      await api.post('/api/v1/daily-log/update', {
+      await api.post('/daily-log/update', {
         id: data.dailyLog.id,
         date: data.dailyLog.date,
         reflections: newCompleted,

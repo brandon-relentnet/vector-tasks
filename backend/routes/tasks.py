@@ -12,7 +12,7 @@ from models import Task
 from schemas import TaskOut, TaskCreate, TaskUpdate, PaginationParams
 from database import get_db, cache_service, notify_dashboard
 
-router = APIRouter(prefix="/api/v1/tasks", tags=["Tasks"])
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 @router.get(
     "",

@@ -12,7 +12,7 @@ from models import Project
 from schemas import ProjectOut, ProjectCreate, ProjectUpdate, PaginationParams
 from database import get_db, cache_service, notify_dashboard
 
-router = APIRouter(prefix="/api/v1/projects", tags=["Projects"])
+router = APIRouter(prefix="/projects", tags=["Projects"])
 
 @router.get(
     "",

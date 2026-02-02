@@ -15,7 +15,7 @@ from schemas import (
 )
 from database import get_db, cache_service, notify_dashboard
 
-router = APIRouter(prefix="/api/v1/daily-log", tags=["Daily Log"])
+router = APIRouter(prefix="/daily-log", tags=["Daily Log"])
 
 @router.get(
     "",
